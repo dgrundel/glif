@@ -18,12 +18,12 @@ type PaletteEntry struct {
 
 type Palette map[rune]PaletteEntry
 
-func LoadMaskedSprite(spritePath, maskPath, palPath string) (*render.Sprite, error) {
-	spriteLines, err := readLines(spritePath)
+func LoadMaskedSprite(basePath string) (*render.Sprite, error) {
+	spriteLines, err := readLines(basePath + ".sprite")
 	if err != nil {
 		return nil, err
 	}
-	maskLines, err := readLines(maskPath)
+	maskLines, err := readLines(basePath + ".mask")
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func LoadMaskedSprite(spritePath, maskPath, palPath string) (*render.Sprite, err
 		return nil, fmt.Errorf("sprite and mask sizes differ: sprite=%dx%d mask=%dx%d", sw, sh, mw, mh)
 	}
 
-	pal, err := loadPalette(resolvePalettePath(spritePath, palPath))
+	pal, err := loadPalette(resolvePalettePath(basePath))
 	if err != nil {
 		return nil, err
 	}
@@ -65,16 +65,12 @@ func LoadMaskedSprite(spritePath, maskPath, palPath string) (*render.Sprite, err
 	return &render.Sprite{W: sw, H: sh, Cells: cells}, nil
 }
 
-func resolvePalettePath(spritePath, palPath string) string {
-	if palPath != "" {
-		return palPath
-	}
-	dir := filepath.Dir(spritePath)
-	base := strings.TrimSuffix(filepath.Base(spritePath), filepath.Ext(spritePath))
-	candidate := filepath.Join(dir, base+".palette")
+func resolvePalettePath(basePath string) string {
+	candidate := basePath + ".palette"
 	if fileExists(candidate) {
 		return candidate
 	}
+	dir := filepath.Dir(basePath)
 	return filepath.Join(dir, "default.palette")
 }
 

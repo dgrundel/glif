@@ -2,7 +2,7 @@
 
 This engine is a terminal-native 2D renderer built around a simple pipeline:
 
-**World → Camera → Framebuffer → Terminal**
+**World/Scene → Framebuffer → Terminal**
 
 Everything ultimately becomes a 2D grid of cells (rune + style) that is diffed and presented to the terminal.
 
@@ -58,51 +58,26 @@ type Sprite struct {
 ```
 
 ### Camera
-The camera defines which part of the world appears on screen.
-
-```
-type Camera struct {
-  Pos Vec2i     // world top-left of view
-  ViewW, ViewH int
-}
-```
-
-`WorldToScreen` projects world coordinates into screen coordinates:
-
-```
-func (c Camera) WorldToScreen(p Vec2i) Vec2i {
-  return Vec2i{p.X - c.Pos.X, p.Y - c.Pos.Y}
-}
-```
-
-When the terminal resizes, the camera view and framebuffer resize together.
+There is no camera yet. When added, it will project world coordinates into screen space and clip to the viewport.
 
 ## Rendering pipeline
 
 Per frame:
 1. `back.Clear()` (fill with spaces + default style)
 2. For each renderable object:
-   - Convert world position to screen position via camera
-   - Clip to viewport
-   - Draw into `back` using render helpers (text, sprite, rect, line, etc.)
+   - Draw into `back` using render helpers (text, sprite)
 3. `term.Present(back)`
    - Diff `back` vs `front`
-   - Emit minimal cursor moves + writes
-   - Swap buffers
+   - Emit minimal cursor updates
+   - Copy changed cells into `front`
 
 ### Diff strategy
-For terminal rendering, a row-based diff is effective and predictable.
+The current implementation is a simple cell-by-cell diff:
+- Compare `back` vs `front`
+- For each changed cell, call `SetContent`
+- Copy the changed cell into `front`
 
-Recommended algorithm:
-- Scan each row left to right
-- When a change is found, emit a run of changed cells
-- Break runs on style changes
-
-Optional optimizations:
-- Dirty-row or dirty-rect tracking
-- Per-row hashing to skip unchanged rows
-
-Avoid LCS/Myers-style diffs; they are not aligned with 2D grids and style boundaries.
+This is intentionally straightforward. A row-run diff or dirty-region tracking can be added later for fewer writes.
 
 ## Modules / packages
 
@@ -120,16 +95,16 @@ A minimal package split that scales well:
    - `Cell`, `Frame`
 
 3. `render`
-   - `DrawText`, `DrawSprite`, `FillRect`, `Line`
-   - Optional render queue / z-layering
+   - `DrawText`, `DrawSprite`
+   - Sprite transparency support (`Ch == 0`)
 
 4. `assets`
-   - Load sprites from files
-   - Optional animation frames
+   - Load masked sprites from files
+   - Mask/palette conventions for color and transparency
 
 5. `scene` (or `ecs` later)
-   - Entity management
-   - Update order
+   - Entity list
+   - Optional event/resize hooks
 
 6. `engine`
    - Main loop
@@ -138,25 +113,26 @@ A minimal package split that scales well:
 
 ## Update loop
 
-Start with a fixed timestep; render can run at the same rate.
+The `engine.Engine` owns the loop. It uses a ticker for update cadence and a select to handle input events.
 
 ```
-tick := time.Second / 60
-for running {
-  start := time.Now()
-
-  events := term.PollEventsNonBlocking()
-  world.HandleInput(events)
-
-  world.Update(tick)
-  renderer.Draw(world, camera, back)
-
-  term.Present(back)
-  sleepRemaining(tick - time.Since(start))
+type Game interface {
+  Update(dt float64)
+  Draw(r *render.Renderer)
+  HandleEvent(ev tcell.Event) (quit bool)
+  Resize(w, h int)
 }
 ```
 
-Rendering and update can be decoupled later, but not initially.
+Per tick:
+- compute `dt` from wall clock
+- `game.Update(dt)`
+- `renderer.Clear()` then `game.Draw(renderer)`
+- `screen.Present(frame)`
+
+Events:
+- resize -> resize frame + notify game
+- other -> `game.HandleEvent`
 
 ## Input and actions
 
@@ -167,12 +143,12 @@ This allows rebinding and future mouse support without touching game logic.
 
 ## ECS vs simple entities
 
-Start with a simple interface:
+Start with a simple interface (current `scene` package):
 
 ```
 type Entity interface {
-  Update(dt time.Duration)
-  Draw(r *Renderer, cam Camera)
+  Update(dt float64)
+  Draw(r *render.Renderer)
 }
 ```
 
@@ -191,4 +167,13 @@ The camera + render pipeline stays unchanged.
 
 ## Notes on terminal tech
 
-`tcell` is a solid default for raw mode, resize, and input. If you later need total control over output, you can still keep `tcell` for input and write your own diff/present logic on top of its screen interface.
+`tcell` is a solid default for raw mode, resize, and input. The engine builds its own frame buffer and performs diffing in `term.Screen.Present`, so you can evolve the diff strategy independently of input handling.
+
+## Asset conventions
+
+Masked sprites are loaded by base path:
+- `duck.sprite`
+- `duck.mask`
+- `duck.palette` (optional)
+
+If `<name>.palette` is missing, `default.palette` in the same folder is used.

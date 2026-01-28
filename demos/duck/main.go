@@ -22,11 +22,7 @@ type Duck struct {
 }
 
 func NewDuck() *Duck {
-	duck, err := assets.LoadMaskedSprite(
-		"demos/duck/assets/duck.sprite",
-		"demos/duck/assets/duck.mask",
-		"",
-	)
+	duck, err := assets.LoadMaskedSprite("demos/duck/assets/duck")
 	if err != nil {
 		log.Fatal(err)
 	}
