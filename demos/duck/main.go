@@ -69,9 +69,69 @@ func (d *Duck) Resize(w, h int) {
 	}
 }
 
+type Whale struct {
+	sprite *render.Sprite
+	posX   float64
+	posY   int
+	dir    int
+	speed  float64
+	w      int
+	h      int
+}
+
+func NewWhale(y int) *Whale {
+	sprite, err := assets.LoadMaskedSprite("demos/duck/assets/whale")
+	if err != nil {
+		log.Fatal(err)
+	}
+	return &Whale{
+		sprite: sprite,
+		posX:   1,
+		posY:   y,
+		dir:    -1,
+		speed:  4,
+	}
+}
+
+func (w *Whale) Update(dt float64) {
+	maxX := w.w - w.sprite.W
+	if maxX < 0 {
+		maxX = 0
+	}
+
+	w.posX += float64(w.dir) * w.speed * dt
+	if w.posX <= 0 {
+		w.posX = 0
+		w.dir = 1
+	}
+	if w.posX >= float64(maxX) {
+		w.posX = float64(maxX)
+		w.dir = -1
+	}
+}
+
+func (w *Whale) Draw(r *render.Renderer) {
+	x := int(w.posX + 0.5)
+	r.DrawSprite(x, w.posY, w.sprite)
+}
+
+func (w *Whale) Resize(width, height int) {
+	w.w = width
+	w.h = height
+	if w.posY >= height {
+		w.posY = height - 1
+	}
+	if w.posY < 0 {
+		w.posY = 0
+	}
+}
+
 func main() {
 	world := scene.New()
-	world.Add(NewDuck())
+	duck := NewDuck()
+	whaleY := duck.posY + duck.duck.H + 1
+	world.Add(duck)
+	world.Add(NewWhale(whaleY))
 	world.OnEvent = func(ev tcell.Event) bool {
 		if key, ok := ev.(*tcell.EventKey); ok {
 			return key.Key() == tcell.KeyEscape || key.Key() == tcell.KeyCtrlC
