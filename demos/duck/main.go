@@ -11,10 +11,6 @@ import (
 	"github.com/gdamore/tcell/v3"
 )
 
-const duckASCII = `
->o)
-(_>
-`
 type Duck struct {
 	duck  *render.Sprite
 	posX  float64
@@ -26,14 +22,20 @@ type Duck struct {
 }
 
 func NewDuck() *Duck {
-	style := grid.Style{Fg: tcell.ColorReset, Bg: tcell.ColorReset}
-	duck := assets.SpriteFromASCII(duckASCII, style, 0)
+	duck, err := assets.LoadMaskedSprite(
+		"demos/duck/assets/duck.sprite",
+		"demos/duck/assets/duck.mask",
+		"",
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return &Duck{
 		duck:  duck,
 		posX:  1,
 		posY:  2,
 		dir:   1,
-		speed: 20,
+		speed: 8,
 	}
 }
 
@@ -81,12 +83,19 @@ func main() {
 		return false
 	}
 
-	game := world
-	eng, err := engine.New(game, 0)
+	eng, err := engine.New(world, 0)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := eng.Run(game); err != nil {
+	eng.Frame.Clear = grid.Cell{
+		Ch: ' ',
+		Style: grid.Style{
+			Fg: tcell.ColorReset,
+			Bg: tcell.ColorBlue,
+		},
+	}
+	eng.Frame.ClearAll()
+	if err := eng.Run(world); err != nil {
 		log.Fatal(err)
 	}
 }

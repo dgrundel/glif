@@ -22,6 +22,9 @@ func (r *Renderer) DrawSprite(x, y int, sprite *Sprite) {
 	for row := 0; row < sprite.H; row++ {
 		for col := 0; col < sprite.W; col++ {
 			cell := sprite.cellAt(col, row)
+			if cell.Ch == 0 {
+				continue
+			}
 			if sprite.Transparent != 0 && cell.Ch == sprite.Transparent {
 				continue
 			}
