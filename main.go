@@ -8,6 +8,20 @@ import (
 	"github.com/gdamore/tcell/v3/color"
 )
 
+const duck = `
+>o)
+(_>
+`
+
+const whale = `
+       .
+      ":"
+    ___:____     |"\/"|
+  ,'        '.    \  /
+  |  O        \___/  |
+~^~^~^~^~^~^~^~^~^~^~^~^~
+`
+
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
 	row := y1
 	col := x1
@@ -67,7 +81,7 @@ func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string)
 
 func main() {
 	defStyle := tcell.StyleDefault.Background(color.Reset).Foreground(color.Reset)
-	boxStyle := tcell.StyleDefault.Foreground(color.White).Background(color.Purple)
+	boxStyle := tcell.StyleDefault.Foreground(color.Black).Background(color.LightGoldenrodYellow)
 
 	// Initialize screen
 	s, err := tcell.NewScreen()
