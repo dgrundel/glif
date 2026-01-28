@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/gdamore/tcell/v3"
 	"github.com/gdamore/tcell/v3/color"
@@ -21,6 +22,39 @@ const whale = `
   |  O        \___/  |
 ~^~^~^~^~^~^~^~^~^~^~^~^~
 `
+
+func splitLines(s string) []string {
+	lines := []string{}
+	start := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\n' {
+			lines = append(lines, s[start:i])
+			start = i + 1
+		}
+	}
+	if start < len(s) {
+		lines = append(lines, s[start:])
+	}
+	return lines
+}
+
+func maxLineLen(lines []string) int {
+	max := 0
+	for _, line := range lines {
+		if len(line) > max {
+			max = len(line)
+		}
+	}
+	return max
+}
+
+func drawSprite(s tcell.Screen, x, y int, style tcell.Style, lines []string) {
+	for row, line := range lines {
+		for col, r := range line {
+			s.SetContent(x+col, y+row, r, nil, style)
+		}
+	}
+}
 
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
 	row := y1
@@ -122,41 +156,89 @@ func main() {
 	// the queue, or else a single-party deadlock might occur.
 	// s.EventQ() <- tcell.NewEventKey(tcell.KeyRune, rune('a'), 0)
 
+	duckLines := splitLines(duck)
+	duckW := maxLineLen(duckLines)
+	duckH := len(duckLines)
+	duckXf := 1.0
+	duckY := 2
+	duckDX := 1
+	duckSpeed := 20.0 // cells per second
+
+	events := s.EventQ()
+
+	ticker := time.NewTicker(33 * time.Millisecond) // ~30 FPS
+	defer ticker.Stop()
+	lastTick := time.Now()
+
 	// Event loop
 	ox, oy := -1, -1
 	for {
-		// Update screen
-		s.Show()
-
-		// Poll event (this can be in a select statement as well)
-		ev := <-s.EventQ()
-
-		// Process event
-		switch ev := ev.(type) {
-		case *tcell.EventResize:
-			s.Sync()
-		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				return
-			} else if ev.Key() == tcell.KeyCtrlL {
-				s.Sync()
-			} else if ev.Str() == "C" || ev.Str() == "c" {
-				s.Clear()
+		select {
+		case <-ticker.C:
+			now := time.Now()
+			dt := now.Sub(lastTick).Seconds()
+			lastTick = now
+			if dt > 0.1 {
+				dt = 0.1
 			}
-		case *tcell.EventMouse:
-			x, y := ev.Position()
 
-			switch ev.Buttons() {
-			case tcell.Button1, tcell.Button2:
-				if ox < 0 {
-					ox, oy = x, y // record location when click started
+			xmax, ymax := s.Size()
+			maxX := xmax - duckW
+			maxY := ymax - duckH - 1
+			if maxX < 0 {
+				maxX = 0
+			}
+			if maxY < 0 {
+				maxY = 0
+			}
+			if duckY < 0 {
+				duckY = 0
+			}
+			if duckY > maxY {
+				duckY = maxY
+			}
+
+			duckXf += float64(duckDX) * duckSpeed * dt
+			if duckXf <= 0 {
+				duckXf = 0
+				duckDX = 1
+			}
+			if duckXf >= float64(maxX) {
+				duckXf = float64(maxX)
+				duckDX = -1
+			}
+
+			duckX := int(duckXf + 0.5)
+			s.Clear()
+			drawSprite(s, duckX, duckY, defStyle, duckLines)
+			s.Show()
+		case ev := <-events:
+			switch ev := ev.(type) {
+			case *tcell.EventResize:
+				s.Sync()
+			case *tcell.EventKey:
+				if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
+					return
+				} else if ev.Key() == tcell.KeyCtrlL {
+					s.Sync()
+				} else if ev.Str() == "C" || ev.Str() == "c" {
+					s.Clear()
 				}
+			case *tcell.EventMouse:
+				x, y := ev.Position()
 
-			case tcell.ButtonNone:
-				if ox >= 0 {
-					label := fmt.Sprintf("%d,%d to %d,%d", ox, oy, x, y)
-					drawBox(s, ox, oy, x, y, boxStyle, label)
-					ox, oy = -1, -1
+				switch ev.Buttons() {
+				case tcell.Button1, tcell.Button2:
+					if ox < 0 {
+						ox, oy = x, y // record location when click started
+					}
+
+				case tcell.ButtonNone:
+					if ox >= 0 {
+						label := fmt.Sprintf("%d,%d to %d,%d", ox, oy, x, y)
+						drawBox(s, ox, oy, x, y, boxStyle, label)
+						ox, oy = -1, -1
+					}
 				}
 			}
 		}
