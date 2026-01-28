@@ -19,14 +19,17 @@ type PaletteEntry struct {
 type Palette map[rune]PaletteEntry
 
 func LoadMaskedSprite(basePath string) (*render.Sprite, error) {
-	spriteLines, err := readLines(basePath + ".sprite")
+	spriteLinesRaw, err := readLines(basePath + ".sprite")
 	if err != nil {
 		return nil, err
 	}
-	maskLines, err := readLines(basePath + ".mask")
+	maskLinesRaw, err := readLines(basePath + ".mask")
 	if err != nil {
 		return nil, err
 	}
+
+	spriteLines := toRunesLines(spriteLinesRaw)
+	maskLines := toRunesLines(maskLinesRaw)
 
 	sw, sh := dims(spriteLines)
 	mw, mh := dims(maskLines)
@@ -149,7 +152,15 @@ func readLines(path string) ([]string, error) {
 	return strings.Split(text, "\n"), nil
 }
 
-func dims(lines []string) (int, int) {
+func toRunesLines(lines []string) [][]rune {
+	out := make([][]rune, len(lines))
+	for i, line := range lines {
+		out[i] = []rune(line)
+	}
+	return out
+}
+
+func dims(lines [][]rune) (int, int) {
 	w := 0
 	for _, line := range lines {
 		if len(line) > w {
@@ -159,9 +170,9 @@ func dims(lines []string) (int, int) {
 	return w, len(lines)
 }
 
-func runeAt(line string, x int) rune {
+func runeAt(line []rune, x int) rune {
 	if x < 0 || x >= len(line) {
 		return ' '
 	}
-	return rune(line[x])
+	return line[x]
 }
