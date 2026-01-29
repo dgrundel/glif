@@ -8,7 +8,7 @@
 - `grid`: core types (`Vec2i`, `Cell`, `Frame`)
 - `render`: draw helpers and sprite support
 - `assets`: sprite loaders (masked sprites + palettes)
-- `scene`: simple entity list with optional event/resize hooks
+- `ecs`: lightweight component/system world + z-ordered sprite rendering
 - `demos/duck`: demo scene
 - `utils/genmask`: sprite mask generator
 

@@ -2,7 +2,7 @@
 
 This engine is a terminal-native 2D renderer built around a simple pipeline:
 
-**World/Scene → Framebuffer → Terminal**
+**World/ECS → Framebuffer → Terminal**
 
 Everything ultimately becomes a 2D grid of cells (rune + style) that is diffed and presented to the terminal.
 
@@ -102,9 +102,10 @@ A minimal package split that scales well:
    - Load masked sprites from files
    - Mask/palette conventions for color and transparency
 
-5. `scene` (or `ecs` later)
-   - Entity list
-   - Optional event/resize hooks
+5. `ecs`
+   - Minimal ECS world (positions, velocities, sprites)
+   - Built-in movement system
+   - Z-ordered rendering
 
 6. `engine`
    - Main loop
@@ -143,19 +144,17 @@ This allows rebinding and future mouse support without touching game logic.
 
 ## ECS vs simple entities
 
-Start with a simple interface (current `scene` package):
+Current approach uses a minimal ECS world in `ecs`:
 
 ```
-type Entity interface {
-  Update(dt float64)
-  Draw(r *render.Renderer)
+type World struct {
+  Positions map[Entity]*Position
+  Velocities map[Entity]*Velocity
+  Sprites map[Entity]*SpriteRef
 }
 ```
 
-Migrate to ECS if you start accumulating lots of entity types or complex combinations. ECS model:
-- Entities are IDs
-- Components are data structs
-- Systems operate over entities with a set of components
+Entities are IDs, components are data structs, and systems iterate over matching component sets.
 
 ## Collision and tile maps
 
