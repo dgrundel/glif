@@ -4,134 +4,50 @@ import (
 	"log"
 
 	"github.com/dgrundel/glif/assets"
+	"github.com/dgrundel/glif/ecs"
 	"github.com/dgrundel/glif/engine"
 	"github.com/dgrundel/glif/grid"
-	"github.com/dgrundel/glif/render"
-	"github.com/dgrundel/glif/scene"
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 )
 
-type Duck struct {
-	duck  *render.Sprite
-	posX  float64
-	posY  int
-	dir   int
-	speed float64
-	w     int
-	h     int
-}
+func main() {
+	world := ecs.NewWorld()
 
-func NewDuck() *Duck {
 	duck, err := assets.LoadMaskedSprite("demos/duck/assets/duck")
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &Duck{
-		duck:  duck,
-		posX:  1,
-		posY:  2,
-		dir:   1,
-		speed: 8,
-	}
-}
-
-func (d *Duck) Update(dt float64) {
-	maxX := d.w - d.duck.W
-	if maxX < 0 {
-		maxX = 0
-	}
-
-	d.posX += float64(d.dir) * d.speed * dt
-	if d.posX <= 0 {
-		d.posX = 0
-		d.dir = 1
-	}
-	if d.posX >= float64(maxX) {
-		d.posX = float64(maxX)
-		d.dir = -1
-	}
-}
-
-func (d *Duck) Draw(r *render.Renderer) {
-	x := int(d.posX + 0.5)
-	r.DrawSprite(x, d.posY, d.duck)
-}
-
-func (d *Duck) Resize(w, h int) {
-	d.w = w
-	d.h = h
-	_ = d.h
-	if d.posY >= h {
-		d.posY = h - 1
-	}
-	if d.posY < 0 {
-		d.posY = 0
-	}
-}
-
-type Whale struct {
-	sprite *render.Sprite
-	posX   float64
-	posY   int
-	dir    int
-	speed  float64
-	w      int
-	h      int
-}
-
-func NewWhale(y int) *Whale {
-	sprite, err := assets.LoadMaskedSprite("demos/duck/assets/whale")
+	whale, err := assets.LoadMaskedSprite("demos/duck/assets/whale")
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &Whale{
-		sprite: sprite,
-		posX:   1,
-		posY:   y,
-		dir:    -1,
-		speed:  4,
-	}
-}
 
-func (w *Whale) Update(dt float64) {
-	maxX := w.w - w.sprite.W
-	if maxX < 0 {
-		maxX = 0
+	duckEntity := world.NewEntity()
+	world.AddPosition(duckEntity, 1, 2)
+	world.AddVelocity(duckEntity, 8, 0)
+	world.AddSprite(duckEntity, duck, 1)
+
+	whaleEntity := world.NewEntity()
+	whaleY := float64(2 + duck.H + 1)
+	world.AddPosition(whaleEntity, 1, whaleY)
+	world.AddVelocity(whaleEntity, 4, 0)
+	world.AddSprite(whaleEntity, whale, 0)
+
+	screenW := 0
+	world.OnResize = func(w, h int) {
+		screenW = w
 	}
 
-	w.posX += float64(w.dir) * w.speed * dt
-	if w.posX <= 0 {
-		w.posX = 0
-		w.dir = 1
-	}
-	if w.posX >= float64(maxX) {
-		w.posX = float64(maxX)
-		w.dir = -1
-	}
-}
+	world.AddSystem(func(w *ecs.World, dt float64) {
+		_ = dt
+		if screenW <= 0 {
+			return
+		}
+		applyBounce(w, screenW, duckEntity)
+		applyBounce(w, screenW, whaleEntity)
+	})
 
-func (w *Whale) Draw(r *render.Renderer) {
-	x := int(w.posX + 0.5)
-	r.DrawSprite(x, w.posY, w.sprite)
-}
-
-func (w *Whale) Resize(width, height int) {
-	w.w = width
-	w.h = height
-	if w.posY >= height {
-		w.posY = height - 1
-	}
-	if w.posY < 0 {
-		w.posY = 0
-	}
-}
-
-func main() {
-	world := scene.New()
-	duck := NewDuck()
-	whaleY := duck.posY + duck.duck.H + 1
-	world.Add(duck)
-	world.Add(NewWhale(whaleY))
 	world.OnEvent = func(ev tcell.Event) bool {
 		if key, ok := ev.(*tcell.EventKey); ok {
 			return key.Key() == tcell.KeyEscape || key.Key() == tcell.KeyCtrlC
@@ -147,11 +63,45 @@ func main() {
 		Ch: ' ',
 		Style: grid.Style{
 			Fg: tcell.ColorReset,
-			Bg: tcell.ColorBlue,
+			Bg: color.Blue,
 		},
 	}
 	eng.Frame.ClearAll()
 	if err := eng.Run(world); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func applyBounce(w *ecs.World, screenW int, e ecs.Entity) {
+	pos, ok := w.Positions[e]
+	if !ok {
+		return
+	}
+	vel, ok := w.Velocities[e]
+	if !ok {
+		return
+	}
+	spriteRef, ok := w.Sprites[e]
+	if !ok || spriteRef.Sprite == nil {
+		return
+	}
+	maxX := float64(screenW - spriteRef.Sprite.W)
+	if maxX < 0 {
+		maxX = 0
+	}
+	if pos.X <= 0 {
+		pos.X = 0
+		vel.DX = abs(vel.DX)
+	}
+	if pos.X >= maxX {
+		pos.X = maxX
+		vel.DX = -abs(vel.DX)
+	}
+}
+
+func abs(v float64) float64 {
+	if v < 0 {
+		return -v
+	}
+	return v
 }
