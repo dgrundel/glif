@@ -25,7 +25,7 @@ type Game struct {
 func NewGame() *Game {
 	world := ecs.NewWorld()
 
-	duck, err := assets.LoadMaskedSprite("demos/duck/assets/duck")
+	duck, err := assets.LoadMaskedSprite("demos/wasd/assets/duck")
 	if err != nil {
 		log.Fatal(err)
 	}

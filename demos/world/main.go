@@ -10,6 +10,7 @@ import (
 	"github.com/dgrundel/glif/grid"
 	"github.com/dgrundel/glif/input"
 	"github.com/dgrundel/glif/render"
+	"github.com/dgrundel/glif/tilemap"
 	"github.com/gdamore/tcell/v3"
 	"github.com/gdamore/tcell/v3/color"
 )
@@ -28,7 +29,11 @@ func NewDemo() *Demo {
 	cam := &camera.Camera{}
 	world.Camera = cam
 
-	duck, err := assets.LoadMaskedSprite("demos/duck/assets/duck")
+	duck, err := assets.LoadMaskedSprite("demos/world/assets/duck")
+	if err != nil {
+		log.Fatal(err)
+	}
+	water, err := assets.LoadMaskedSprite("demos/world/assets/water")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,6 +42,17 @@ func NewDemo() *Demo {
 	world.AddPosition(player, 0, 0)
 	world.AddVelocity(player, 0, 0)
 	world.AddSprite(player, duck, 0)
+
+	tm := tilemap.New(40, 20, water.W, water.H, 0)
+	tm.Tileset[1] = water
+	for y := 0; y < tm.H; y++ {
+		for x := 0; x < tm.W; x++ {
+			tm.Set(x, y, 1)
+		}
+	}
+	tmEntity := world.NewEntity()
+	world.AddPosition(tmEntity, 0, 0)
+	world.AddTileMap(tmEntity, tm, -1)
 
 	world.OnResize = func(w, h int) {
 		cam.ViewW = w

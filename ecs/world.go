@@ -5,6 +5,7 @@ import (
 
 	"github.com/dgrundel/glif/camera"
 	"github.com/dgrundel/glif/render"
+	"github.com/dgrundel/glif/tilemap"
 )
 
 type Entity int
@@ -24,6 +25,11 @@ type SpriteRef struct {
 	Z      int
 }
 
+type TileMapRef struct {
+	Map *tilemap.Map
+	Z   int
+}
+
 type UpdateSystem func(w *World, dt float64)
 
 type World struct {
@@ -31,6 +37,7 @@ type World struct {
 	Positions  map[Entity]*Position
 	Velocities map[Entity]*Velocity
 	Sprites    map[Entity]*SpriteRef
+	TileMaps   map[Entity]*TileMapRef
 	Camera     *camera.Camera
 
 	UpdateSystems []UpdateSystem
@@ -43,6 +50,7 @@ func NewWorld() *World {
 		Positions:     make(map[Entity]*Position),
 		Velocities:    make(map[Entity]*Velocity),
 		Sprites:       make(map[Entity]*SpriteRef),
+		TileMaps:      make(map[Entity]*TileMapRef),
 		UpdateSystems: []UpdateSystem{},
 	}
 }
@@ -63,6 +71,10 @@ func (w *World) AddVelocity(e Entity, dx, dy float64) {
 
 func (w *World) AddSprite(e Entity, sprite *render.Sprite, z int) {
 	w.Sprites[e] = &SpriteRef{Sprite: sprite, Z: z}
+}
+
+func (w *World) AddTileMap(e Entity, m *tilemap.Map, z int) {
+	w.TileMaps[e] = &TileMapRef{Map: m, Z: z}
 }
 
 func (w *World) AddSystem(sys UpdateSystem) {
@@ -90,33 +102,50 @@ func (w *World) Draw(r *render.Renderer) {
 		entity Entity
 		pos    *Position
 		sprite *SpriteRef
+		tile   *TileMapRef
+		z      int
 	}
-	items := make([]drawItem, 0, len(w.Sprites))
+	items := make([]drawItem, 0, len(w.Sprites)+len(w.TileMaps))
 	for e, spr := range w.Sprites {
 		pos, ok := w.Positions[e]
 		if !ok || spr.Sprite == nil {
 			continue
 		}
-		items = append(items, drawItem{entity: e, pos: pos, sprite: spr})
+		items = append(items, drawItem{entity: e, pos: pos, sprite: spr, z: spr.Z})
+	}
+	for e, tm := range w.TileMaps {
+		pos, ok := w.Positions[e]
+		if !ok || tm.Map == nil {
+			continue
+		}
+		items = append(items, drawItem{entity: e, pos: pos, tile: tm, z: tm.Z})
 	}
 	sort.Slice(items, func(i, j int) bool {
-		if items[i].sprite.Z == items[j].sprite.Z {
+		if items[i].z == items[j].z {
 			return items[i].entity < items[j].entity
 		}
-		return items[i].sprite.Z < items[j].sprite.Z
+		return items[i].z < items[j].z
 	})
 	for _, item := range items {
-		x := item.pos.X
-		y := item.pos.Y
-		if w.Camera != nil {
-			if !w.Camera.InView(x, y, item.sprite.Sprite.W, item.sprite.Sprite.H) {
-				continue
+		if item.sprite != nil {
+			x := item.pos.X
+			y := item.pos.Y
+			if w.Camera != nil {
+				if !w.Camera.InView(x, y, item.sprite.Sprite.W, item.sprite.Sprite.H) {
+					continue
+				}
+				x, y = w.Camera.WorldToScreen(x, y)
 			}
-			x, y = w.Camera.WorldToScreen(x, y)
+			sx := int(x + 0.5)
+			sy := int(y + 0.5)
+			r.DrawSprite(sx, sy, item.sprite.Sprite)
+			continue
 		}
-		sx := int(x + 0.5)
-		sy := int(y + 0.5)
-		r.DrawSprite(sx, sy, item.sprite.Sprite)
+		if item.tile != nil {
+			x := item.pos.X
+			y := item.pos.Y
+			item.tile.Map.Draw(r, x, y, w.Camera)
+		}
 	}
 }
 
