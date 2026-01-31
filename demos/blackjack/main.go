@@ -42,6 +42,8 @@ type Blackjack struct {
 	splash *render.Sprite
 	cards  map[rune]*render.Sprite
 	back   *render.Sprite
+	width  int
+	height int
 }
 
 type Card struct {
@@ -126,24 +128,25 @@ func (b *Blackjack) Draw(r *render.Renderer) {
 		dealerTotal = handTotal([]Card{b.dealer[0]})
 	}
 
-	r.DrawText(0, 0, fmt.Sprintf("Dealer hand (%d):", dealerTotal), textStyle)
-	drawHand(r, 0, 1, b.dealer, b.phase != PhasePlayer, textStyle, redStyle, b.cards, b.back)
+	x0, y0 := b.layoutOffsets(r, dealerTotal, playerTotal)
+	r.DrawText(x0, y0, fmt.Sprintf("Dealer hand (%d):", dealerTotal), textStyle)
+	drawHand(r, x0, y0+1, b.dealer, b.phase != PhasePlayer, textStyle, redStyle, b.cards, b.back)
 
-	r.DrawText(0, 7, fmt.Sprintf("Your hand (%d):", playerTotal), textStyle)
-	drawHand(r, 0, 8, b.player, true, textStyle, redStyle, b.cards, b.back)
+	r.DrawText(x0, y0+7, fmt.Sprintf("Your hand (%d):", playerTotal), textStyle)
+	drawHand(r, x0, y0+8, b.player, true, textStyle, redStyle, b.cards, b.back)
 
 	switch b.phase {
 	case PhasePlayer:
-		drawMenu(r, 0, 14, []string{"Hit", "Stay", "Quit"}, b.menuIndex, textStyle)
+		drawMenu(r, x0, y0+14, []string{"Hit", "Stay", "Quit"}, b.menuIndex, textStyle)
 	case PhaseOver:
-		r.DrawText(0, 14, b.message, textStyle)
-		drawMenu(r, 0, 16, []string{"Play again", "Quit"}, b.endMenuIndex, textStyle)
+		r.DrawText(x0, y0+14, b.message, textStyle)
+		drawMenu(r, x0, y0+16, []string{"Play again", "Quit"}, b.endMenuIndex, textStyle)
 	}
 }
 
 func (b *Blackjack) Resize(w, h int) {
-	_ = w
-	_ = h
+	b.width = w
+	b.height = h
 }
 
 func (b *Blackjack) SetInput(state input.State) {
@@ -253,10 +256,12 @@ func (b *Blackjack) drawSplash(r *render.Renderer, style grid.Style) {
 	if b.splash == nil {
 		return
 	}
-	startY := 1
-	r.DrawSprite(0, startY, b.splash)
+	startY := max(1, (r.Frame.H-b.splash.H)/2-1)
+	startX := max(0, (r.Frame.W-b.splash.W)/2)
+	r.DrawSprite(startX, startY, b.splash)
 	prompt := "press enter to continue"
-	r.DrawText(2, startY+b.splash.H+1, prompt, style)
+	promptX := max(0, (r.Frame.W-len(prompt))/2)
+	r.DrawText(promptX, startY+b.splash.H+1, prompt, style)
 }
 
 func newDeck() []Card {
@@ -398,6 +403,40 @@ func loadSprite(base string) *render.Sprite {
 		log.Fatal(err)
 	}
 	return sprite
+}
+
+func (b *Blackjack) layoutOffsets(r *render.Renderer, dealerTotal, playerTotal int) (int, int) {
+	screenW := r.Frame.W
+	screenH := r.Frame.H
+	handW := max(handWidth(len(b.dealer)), handWidth(len(b.player)))
+	labelW := max(len(fmt.Sprintf("Dealer hand (%d):", dealerTotal)), len(fmt.Sprintf("Your hand (%d):", playerTotal)))
+	menuW := max(menuWidth([]string{"Hit", "Stay", "Quit"}), menuWidth([]string{"Play again", "Quit"}))
+	contentW := max(handW, max(labelW, menuW))
+
+	contentH := 15
+	if b.phase == PhaseOver {
+		contentH = 17
+	}
+	x0 := max(0, (screenW-contentW)/2)
+	y0 := max(0, (screenH-contentH)/2)
+	return x0, y0
+}
+
+func handWidth(count int) int {
+	if count <= 0 {
+		return 0
+	}
+	return count*8 - 1
+}
+
+func menuWidth(items []string) int {
+	maxLen := 0
+	for _, item := range items {
+		if len(item) > maxLen {
+			maxLen = len(item)
+		}
+	}
+	return maxLen + 2
 }
 
 func main() {
