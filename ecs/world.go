@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"github.com/dgrundel/glif/render"
-	"github.com/gdamore/tcell/v3"
 )
 
 type Entity int
@@ -34,7 +33,6 @@ type World struct {
 
 	UpdateSystems []UpdateSystem
 
-	OnEvent  func(ev tcell.Event) (quit bool)
 	OnResize func(w, h int)
 }
 
@@ -110,13 +108,6 @@ func (w *World) Draw(r *render.Renderer) {
 		y := int(item.pos.Y + 0.5)
 		r.DrawSprite(x, y, item.sprite.Sprite)
 	}
-}
-
-func (w *World) HandleEvent(ev tcell.Event) (quit bool) {
-	if w.OnEvent != nil {
-		return w.OnEvent(ev)
-	}
-	return false
 }
 
 func (w *World) Resize(width, height int) {

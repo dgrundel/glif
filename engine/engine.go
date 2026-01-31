@@ -13,7 +13,6 @@ import (
 type Game interface {
 	Update(dt float64)
 	Draw(r *render.Renderer)
-	HandleEvent(ev tcell.Event) (quit bool)
 	Resize(w, h int)
 }
 
@@ -89,9 +88,6 @@ func (e *Engine) Run(game Game) error {
 						game.Resize(w, h)
 					default:
 						e.Input.HandleEvent(ev)
-						if game.HandleEvent(ev) {
-							return nil
-						}
 					}
 				default:
 					goto updates
@@ -130,9 +126,6 @@ func (e *Engine) Run(game Game) error {
 				game.Resize(w, h)
 			default:
 				e.Input.HandleEvent(ev)
-				if game.HandleEvent(ev) {
-					return nil
-				}
 			}
 		}
 	}

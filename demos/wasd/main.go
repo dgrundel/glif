@@ -62,10 +62,6 @@ func (g *Game) Draw(r *render.Renderer) {
 	g.world.Draw(r)
 }
 
-func (g *Game) HandleEvent(ev tcell.Event) bool {
-	return false
-}
-
 func (g *Game) Resize(w, h int) {
 	g.screenW = w
 	g.screenH = h

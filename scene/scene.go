@@ -1,17 +1,10 @@
 package scene
 
-import (
-	"github.com/dgrundel/glif/render"
-	"github.com/gdamore/tcell/v3"
-)
+import "github.com/dgrundel/glif/render"
 
 type Entity interface {
 	Update(dt float64)
 	Draw(r *render.Renderer)
-}
-
-type EventHandler interface {
-	HandleEvent(ev tcell.Event) (quit bool)
 }
 
 type Resizer interface {
@@ -20,7 +13,6 @@ type Resizer interface {
 
 type Scene struct {
 	Entities []Entity
-	OnEvent  func(ev tcell.Event) (quit bool)
 	OnResize func(w, h int)
 }
 
@@ -42,18 +34,6 @@ func (s *Scene) Draw(r *render.Renderer) {
 	for _, e := range s.Entities {
 		e.Draw(r)
 	}
-}
-
-func (s *Scene) HandleEvent(ev tcell.Event) (quit bool) {
-	if s.OnEvent != nil && s.OnEvent(ev) {
-		return true
-	}
-	for _, e := range s.Entities {
-		if h, ok := e.(EventHandler); ok && h.HandleEvent(ev) {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *Scene) Resize(w, h int) {

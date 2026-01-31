@@ -124,7 +124,6 @@ The `engine.Engine` owns the loop. It uses a ticker for update cadence and a sel
 type Game interface {
   Update(dt float64)
   Draw(r *render.Renderer)
-  HandleEvent(ev tcell.Event) (quit bool)
   Resize(w, h int)
 }
 ```
@@ -137,7 +136,7 @@ Per tick:
 
 Events:
 - resize -> resize frame + notify game
-- other -> `game.HandleEvent`
+- other -> handled by the engine input manager
 
 ## Input and actions
 
