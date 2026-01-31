@@ -7,14 +7,23 @@ import (
 )
 
 type State struct {
-	Held    map[string]bool
-	Pressed map[string]bool
+	Held    map[Key]bool
+	Pressed map[Key]bool
 }
+
+// Action is a game-defined action identifier.
+type Action string
+
+// Key is a key identifier (e.g. "w", "key:esc").
+type Key string
+
+// ActionMap maps actions to keys.
+type ActionMap map[Action]Key
 
 type Manager struct {
 	hold    float64
-	keys    map[string]float64
-	pressed map[string]bool
+	keys    map[Key]float64
+	pressed map[Key]bool
 }
 
 func New(holdDuration float64) *Manager {
@@ -23,8 +32,8 @@ func New(holdDuration float64) *Manager {
 	}
 	return &Manager{
 		hold:    holdDuration,
-		keys:    map[string]float64{},
-		pressed: map[string]bool{},
+		keys:    map[Key]float64{},
+		pressed: map[Key]bool{},
 	}
 }
 
@@ -51,30 +60,30 @@ func (m *Manager) Step(dt float64) State {
 		}
 	}
 
-	held := make(map[string]bool, len(m.keys))
+	held := make(map[Key]bool, len(m.keys))
 	for k := range m.keys {
 		held[k] = true
 	}
 
 	pressed := m.pressed
-	m.pressed = map[string]bool{}
+	m.pressed = map[Key]bool{}
 
 	return State{Held: held, Pressed: pressed}
 }
 
-func KeyID(ev *tcell.EventKey) string {
+func KeyID(ev *tcell.EventKey) Key {
 	if ev == nil {
 		return ""
 	}
 	if ev.Key() == tcell.KeyRune {
-		return strings.ToLower(ev.Str())
+		return Key(strings.ToLower(ev.Str()))
 	}
 	switch ev.Key() {
 	case tcell.KeyEscape:
-		return "key:esc"
+		return Key("key:esc")
 	case tcell.KeyCtrlC:
-		return "key:ctrl+c"
+		return Key("key:ctrl+c")
 	default:
-		return "key:" + strings.ToLower(ev.Name())
+		return Key("key:" + strings.ToLower(ev.Name()))
 	}
 }

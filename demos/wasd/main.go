@@ -17,7 +17,8 @@ type Game struct {
 	player  ecs.Entity
 	screenW int
 	screenH int
-	input   *input.Manager
+	state   input.State
+	binds   input.ActionMap
 }
 
 func NewGame() *Game {
@@ -33,12 +34,21 @@ func NewGame() *Game {
 	world.AddVelocity(player, 0, 0)
 	world.AddSprite(player, duck, 0)
 
-	return &Game{world: world, player: player, input: input.New(0.12)}
+	return &Game{
+		world:  world,
+		player: player,
+		binds: input.ActionMap{
+			"move_up":    "w",
+			"move_down":  "s",
+			"move_left":  "a",
+			"move_right": "d",
+			"stop":       " ",
+		},
+	}
 }
 
 func (g *Game) Update(dt float64) {
-	state := g.input.Step(dt)
-	g.applyMovement(state)
+	g.applyMovement()
 	g.world.Update(dt)
 }
 
@@ -50,10 +60,9 @@ func (g *Game) HandleEvent(ev tcell.Event) bool {
 	switch ev := ev.(type) {
 	case *tcell.EventKey:
 		keyID := input.KeyID(ev)
-		if keyID == "key:esc" || keyID == "key:ctrl+c" {
+		if keyID == input.Key("key:esc") || keyID == input.Key("key:ctrl+c") {
 			return true
 		}
-		g.input.HandleEvent(ev)
 	}
 	return false
 }
@@ -77,23 +86,27 @@ func (g *Game) setVelocity(dx, dy float64) {
 	vel.DY = dy
 }
 
-func (g *Game) applyMovement(state input.State) {
+func (g *Game) SetInput(state input.State) {
+	g.state = state
+}
+
+func (g *Game) applyMovement() {
 	speed := 10.0
 	dx := 0.0
 	dy := 0.0
-	if state.Held["a"] || state.Pressed["a"] {
+	if g.held("move_left") || g.pressed("move_left") {
 		dx -= 1
 	}
-	if state.Held["d"] || state.Pressed["d"] {
+	if g.held("move_right") || g.pressed("move_right") {
 		dx += 1
 	}
-	if state.Held["w"] || state.Pressed["w"] {
+	if g.held("move_up") || g.pressed("move_up") {
 		dy -= 1
 	}
-	if state.Held["s"] || state.Pressed["s"] {
+	if g.held("move_down") || g.pressed("move_down") {
 		dy += 1
 	}
-	if state.Pressed[" "] {
+	if g.pressed("stop") {
 		dx = 0
 		dy = 0
 	}
@@ -103,6 +116,22 @@ func (g *Game) applyMovement(state input.State) {
 		dy *= scale
 	}
 	g.setVelocity(dx*speed, dy*speed)
+}
+
+func (g *Game) held(action input.Action) bool {
+	key, ok := g.binds[action]
+	if !ok {
+		return false
+	}
+	return g.state.Held[key]
+}
+
+func (g *Game) pressed(action input.Action) bool {
+	key, ok := g.binds[action]
+	if !ok {
+		return false
+	}
+	return g.state.Pressed[key]
 }
 
 func main() {

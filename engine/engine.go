@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/dgrundel/glif/grid"
+	"github.com/dgrundel/glif/input"
 	"github.com/dgrundel/glif/render"
 	"github.com/dgrundel/glif/term"
 	"github.com/gdamore/tcell/v3"
@@ -16,11 +17,16 @@ type Game interface {
 	Resize(w, h int)
 }
 
+type InputAware interface {
+	SetInput(state input.State)
+}
+
 type Engine struct {
 	Screen   *term.Screen
 	Renderer *render.Renderer
 	Frame    *grid.Frame
 	Tick     time.Duration
+	Input    *input.Manager
 }
 
 func New(game Game, tick time.Duration) (*Engine, error) {
@@ -36,7 +42,13 @@ func New(game Game, tick time.Duration) (*Engine, error) {
 		tick = 33 * time.Millisecond
 	}
 	game.Resize(w, h)
-	return &Engine{Screen: screen, Renderer: r, Frame: frame, Tick: tick}, nil
+	return &Engine{
+		Screen:   screen,
+		Renderer: r,
+		Frame:    frame,
+		Tick:     tick,
+		Input:    input.New(0.12),
+	}, nil
 }
 
 func (e *Engine) Run(game Game) error {
@@ -72,6 +84,7 @@ func (e *Engine) Run(game Game) error {
 						e.Renderer.SetFrame(e.Frame)
 						game.Resize(w, h)
 					default:
+						e.Input.HandleEvent(ev)
 						if game.HandleEvent(ev) {
 							return nil
 						}
@@ -82,6 +95,11 @@ func (e *Engine) Run(game Game) error {
 			}
 
 		updates:
+			state := e.Input.Step(dt)
+			if ia, ok := game.(InputAware); ok {
+				ia.SetInput(state)
+			}
+
 			accumulator += dt
 			if accumulator > maxAccum {
 				accumulator = maxAccum
@@ -104,6 +122,7 @@ func (e *Engine) Run(game Game) error {
 				e.Renderer.SetFrame(e.Frame)
 				game.Resize(w, h)
 			default:
+				e.Input.HandleEvent(ev)
 				if game.HandleEvent(ev) {
 					return nil
 				}
