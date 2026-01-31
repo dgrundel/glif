@@ -53,8 +53,8 @@ func (p *Picker) Update(dt float64) {
 
 func (p *Picker) Draw(r *render.Renderer) {
 	w := r.Frame.W
-	swatchW := 18
-	swatchH := 6
+	swatchW := 16
+	swatchH := 8
 
 	labelX := 2
 	selectorX := 0
@@ -93,7 +93,7 @@ func (p *Picker) Draw(r *render.Renderer) {
 		}
 		r.DrawText(labelX, y+1, labels[i], textStyle)
 
-		drawBox(r, barX, y, barWidth, barH, boxStyle)
+		drawRoundBox(r, barX, y, barWidth, barH, boxStyle)
 		innerW := barWidth - 2
 		fill := 0
 		if innerW > 0 {
@@ -112,6 +112,7 @@ func (p *Picker) Draw(r *render.Renderer) {
 	color := tcell.NewRGBColor(int32(p.values[0]), int32(p.values[1]), int32(p.values[2]))
 	swatchStyle := grid.Style{Fg: color, Bg: color}
 	fillRect(r, swatchX, swatchY, swatchW, swatchH, swatchStyle)
+	drawRoundBox(r, swatchX, swatchY, swatchW, swatchH, boxStyle)
 
 	hex := fmt.Sprintf("#%02x%02x%02x", p.values[0], p.values[1], p.values[2])
 	r.DrawText(swatchX+2, swatchY+swatchH+1, hex, textStyle)
@@ -190,22 +191,22 @@ func (p *Picker) adjustValue(dt float64) {
 	p.values[p.selected] = clamp(p.values[p.selected]+delta, 0, 255)
 }
 
-func drawBox(r *render.Renderer, x, y, w, h int, style grid.Style) {
+func drawRoundBox(r *render.Renderer, x, y, w, h int, style grid.Style) {
 	if w < 2 || h < 2 {
 		return
 	}
-	r.Frame.Set(x, y, grid.Cell{Ch: tcell.RuneULCorner, Style: style})
-	r.Frame.Set(x+w-1, y, grid.Cell{Ch: tcell.RuneURCorner, Style: style})
-	r.Frame.Set(x, y+h-1, grid.Cell{Ch: tcell.RuneLLCorner, Style: style})
-	r.Frame.Set(x+w-1, y+h-1, grid.Cell{Ch: tcell.RuneLRCorner, Style: style})
+	r.Frame.Set(x, y, grid.Cell{Ch: '╭', Style: style})
+	r.Frame.Set(x+w-1, y, grid.Cell{Ch: '╮', Style: style})
+	r.Frame.Set(x, y+h-1, grid.Cell{Ch: '╰', Style: style})
+	r.Frame.Set(x+w-1, y+h-1, grid.Cell{Ch: '╯', Style: style})
 
 	for i := 1; i < w-1; i++ {
-		r.Frame.Set(x+i, y, grid.Cell{Ch: tcell.RuneHLine, Style: style})
-		r.Frame.Set(x+i, y+h-1, grid.Cell{Ch: tcell.RuneHLine, Style: style})
+		r.Frame.Set(x+i, y, grid.Cell{Ch: '─', Style: style})
+		r.Frame.Set(x+i, y+h-1, grid.Cell{Ch: '─', Style: style})
 	}
 	for j := 1; j < h-1; j++ {
-		r.Frame.Set(x, y+j, grid.Cell{Ch: tcell.RuneVLine, Style: style})
-		r.Frame.Set(x+w-1, y+j, grid.Cell{Ch: tcell.RuneVLine, Style: style})
+		r.Frame.Set(x, y+j, grid.Cell{Ch: '│', Style: style})
+		r.Frame.Set(x+w-1, y+j, grid.Cell{Ch: '│', Style: style})
 	}
 }
 
