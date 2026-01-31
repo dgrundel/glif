@@ -27,7 +27,7 @@ type Picker struct {
 }
 
 func NewPicker() *Picker {
-	pal, err := palette.Load("demos/picker/assets/ui.palette")
+	pal, err := palette.Load("demos/picker/assets/default.palette")
 	if err != nil {
 		log.Fatal(err)
 	}

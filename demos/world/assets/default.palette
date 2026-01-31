@@ -2,4 +2,5 @@
 w white blue
 g gold blue
 s #53ccfc blue
+b reset #0000ff
 . reset reset transparent

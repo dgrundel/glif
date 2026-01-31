@@ -26,7 +26,7 @@ type Demo struct {
 }
 
 func NewDemo() *Demo {
-	pal, err := palette.Load("demos/world/assets/ui.palette")
+	pal, err := palette.Load("demos/world/assets/default.palette")
 	if err != nil {
 		log.Fatal(err)
 	}

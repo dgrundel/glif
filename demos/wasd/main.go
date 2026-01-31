@@ -24,7 +24,7 @@ type Game struct {
 }
 
 func NewGame() *Game {
-	pal, err := palette.Load("demos/wasd/assets/ui.palette")
+	pal, err := palette.Load("demos/wasd/assets/default.palette")
 	if err != nil {
 		log.Fatal(err)
 	}

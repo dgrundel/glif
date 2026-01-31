@@ -59,7 +59,7 @@ func NewBlackjack() *Blackjack {
 	if err != nil {
 		log.Fatal(err)
 	}
-	pal, err := palette.Load("demos/blackjack/assets/ui.palette")
+	pal, err := palette.Load("demos/blackjack/assets/default.palette")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func NewBlackjack() *Blackjack {
 	if err != nil {
 		log.Fatal(err)
 	}
-	bg, err := pal.Style('b')
+	bg, err := pal.Style('z')
 	if err != nil {
 		log.Fatal(err)
 	}

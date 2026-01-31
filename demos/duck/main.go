@@ -21,7 +21,7 @@ type Demo struct {
 }
 
 func NewDemo() *Demo {
-	pal, err := palette.Load("demos/duck/assets/ui.palette")
+	pal, err := palette.Load("demos/duck/assets/default.palette")
 	if err != nil {
 		log.Fatal(err)
 	}
