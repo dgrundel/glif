@@ -3,6 +3,7 @@ package ecs
 import (
 	"sort"
 
+	"github.com/dgrundel/glif/camera"
 	"github.com/dgrundel/glif/render"
 )
 
@@ -30,6 +31,7 @@ type World struct {
 	Positions  map[Entity]*Position
 	Velocities map[Entity]*Velocity
 	Sprites    map[Entity]*SpriteRef
+	Camera     *camera.Camera
 
 	UpdateSystems []UpdateSystem
 
@@ -104,9 +106,17 @@ func (w *World) Draw(r *render.Renderer) {
 		return items[i].sprite.Z < items[j].sprite.Z
 	})
 	for _, item := range items {
-		x := int(item.pos.X + 0.5)
-		y := int(item.pos.Y + 0.5)
-		r.DrawSprite(x, y, item.sprite.Sprite)
+		x := item.pos.X
+		y := item.pos.Y
+		if w.Camera != nil {
+			if !w.Camera.InView(x, y, item.sprite.Sprite.W, item.sprite.Sprite.H) {
+				continue
+			}
+			x, y = w.Camera.WorldToScreen(x, y)
+		}
+		sx := int(x + 0.5)
+		sy := int(y + 0.5)
+		r.DrawSprite(sx, sy, item.sprite.Sprite)
 	}
 }
 
