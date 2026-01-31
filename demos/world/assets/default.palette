@@ -1,4 +1,5 @@
 # key fg bg [bold] [transparent]
 w white blue
 g gold blue
+s #53ccfc blue
 . reset reset transparent

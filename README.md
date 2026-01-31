@@ -38,6 +38,10 @@ Load with:
 assets.LoadMaskedSprite("path/to/name")
 ```
 
+Palette colors support:
+- Hex RGB (`#RRGGBB` or `#RGB`)
+- Named colors supported by tcell
+
 ## Mask generator
 
 Generate a mask from a sprite:
