@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"math"
 	"sort"
 
 	"github.com/dgrundel/glif/camera"
@@ -136,8 +137,8 @@ func (w *World) Draw(r *render.Renderer) {
 				}
 				x, y = w.Camera.WorldToScreen(x, y)
 			}
-			sx := int(x + 0.5)
-			sy := int(y + 0.5)
+			sx := int(math.Floor(x))
+			sy := int(math.Floor(y))
 			r.DrawSprite(sx, sy, item.sprite.Sprite)
 			continue
 		}

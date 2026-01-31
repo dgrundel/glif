@@ -78,7 +78,7 @@ func (m *Map) Draw(r *render.Renderer, worldX, worldY float64, cam *camera.Camer
 			if cam != nil {
 				wx, wy = cam.WorldToScreen(wx, wy)
 			}
-			r.DrawSprite(int(wx+0.5), int(wy+0.5), sprite)
+			r.DrawSprite(int(math.Floor(wx)), int(math.Floor(wy)), sprite)
 		}
 	}
 }
