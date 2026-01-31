@@ -445,7 +445,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: grid.Style{Fg: tcell.ColorReset, Bg: tcell.ColorReset}}
+	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: grid.Style{Fg: tcell.ColorReset, Bg: tcell.NewRGBColor(0x2b, 0xa9, 0x3d)}}
 	eng.Frame.ClearAll()
 	if err := eng.Run(game); err != nil {
 		log.Fatal(err)
