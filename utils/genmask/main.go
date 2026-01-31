@@ -39,24 +39,28 @@ func main() {
 	if len(lines) == 1 && lines[0] == "" {
 		lines = []string{}
 	}
+	runeLines := make([][]rune, len(lines))
 	width := 0
-	for _, line := range lines {
-		if len(line) > width {
-			width = len(line)
+	for i, line := range lines {
+		runes := []rune(line)
+		runeLines[i] = runes
+		if len(runes) > width {
+			width = len(runes)
 		}
 	}
 
 	fillCh := fill[0]
 	transCh := transparent[0]
-	maskLines := make([]string, 0, len(lines))
-	for _, line := range lines {
-		if len(line) < width {
-			line = line + strings.Repeat(" ", width-len(line))
-		}
+	maskLines := make([]string, 0, len(runeLines))
+	for _, line := range runeLines {
 		var b strings.Builder
 		b.Grow(width)
 		for i := 0; i < width; i++ {
-			if line[i] == ' ' {
+			ch := ' '
+			if i < len(line) {
+				ch = line[i]
+			}
+			if ch == ' ' {
 				b.WriteByte(transCh)
 			} else {
 				b.WriteByte(fillCh)

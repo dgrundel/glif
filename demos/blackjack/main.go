@@ -1,14 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"math/rand"
-	"os"
 	"strings"
 	"time"
 
+	"github.com/dgrundel/glif/assets"
 	"github.com/dgrundel/glif/engine"
 	"github.com/dgrundel/glif/grid"
 	"github.com/dgrundel/glif/input"
@@ -39,7 +38,7 @@ type Blackjack struct {
 	player []Card
 	dealer []Card
 
-	splashLines []string
+	splash *render.Sprite
 }
 
 type Card struct {
@@ -48,7 +47,7 @@ type Card struct {
 }
 
 func NewBlackjack() *Blackjack {
-	splash, err := readLines("demos/blackjack/assets/splash.sprite")
+	splash, err := assets.LoadMaskedSprite("demos/blackjack/assets/splash")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -62,7 +61,7 @@ func NewBlackjack() *Blackjack {
 			"quit":     "key:esc",
 			"quit_alt": "key:ctrl+c",
 		},
-		splashLines: splash,
+		splash: splash,
 	}
 	b.resetDeck()
 	return b
@@ -246,15 +245,13 @@ func (b *Blackjack) draw() Card {
 }
 
 func (b *Blackjack) drawSplash(r *render.Renderer, style grid.Style) {
-	if len(b.splashLines) == 0 {
+	if b.splash == nil {
 		return
 	}
 	startY := 1
-	for i, line := range b.splashLines {
-		r.DrawText(0, startY+i, line, style)
-	}
+	r.DrawSprite(0, startY, b.splash)
 	prompt := "press enter to continue"
-	r.DrawText(2, startY+len(b.splashLines)+1, prompt, style)
+	r.DrawText(2, startY+b.splash.H+1, prompt, style)
 }
 
 func newDeck() []Card {
@@ -367,20 +364,6 @@ func padRight(s string, w int) string {
 		return s
 	}
 	return s + strings.Repeat(" ", w-len(s))
-}
-
-func readLines(path string) ([]string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	var lines []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	return lines, scanner.Err()
 }
 
 func main() {
