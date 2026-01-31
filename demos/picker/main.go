@@ -106,7 +106,7 @@ func (p *Picker) Draw(r *render.Renderer) {
 		}
 		r.DrawText(labelX, y+1, labels[i], textStyle)
 
-		drawRoundBox(r, barX, y, barWidth, barH, boxStyle)
+		r.Rect(barX, y, barWidth, barH, boxStyle)
 		innerW := barWidth - 2
 		fill := 0
 		if innerW > 0 {
@@ -124,8 +124,8 @@ func (p *Picker) Draw(r *render.Renderer) {
 	swatchY := startY
 	color := tcell.NewRGBColor(int32(p.values[0]), int32(p.values[1]), int32(p.values[2]))
 	swatchStyle := grid.Style{Fg: color, Bg: color}
-	fillRect(r, swatchX, swatchY, swatchW, swatchH, swatchStyle)
-	drawRoundBox(r, swatchX, swatchY, swatchW, swatchH, boxStyle)
+	r.Rect(swatchX, swatchY, swatchW, swatchH, swatchStyle, render.RectOptions{Fill: true})
+	r.Rect(swatchX, swatchY, swatchW, swatchH, boxStyle)
 
 	hex := fmt.Sprintf("#%02x%02x%02x", p.values[0], p.values[1], p.values[2])
 	r.DrawText(swatchX+2, swatchY+swatchH+1, hex, textStyle)
@@ -206,33 +206,6 @@ func (p *Picker) adjustValue(dt float64) {
 		return
 	}
 	p.values[p.selected] = clamp(p.values[p.selected]+delta, 0, 255)
-}
-
-func drawRoundBox(r *render.Renderer, x, y, w, h int, style grid.Style) {
-	if w < 2 || h < 2 {
-		return
-	}
-	r.Frame.Set(x, y, grid.Cell{Ch: '╭', Style: style})
-	r.Frame.Set(x+w-1, y, grid.Cell{Ch: '╮', Style: style})
-	r.Frame.Set(x, y+h-1, grid.Cell{Ch: '╰', Style: style})
-	r.Frame.Set(x+w-1, y+h-1, grid.Cell{Ch: '╯', Style: style})
-
-	for i := 1; i < w-1; i++ {
-		r.Frame.Set(x+i, y, grid.Cell{Ch: '─', Style: style})
-		r.Frame.Set(x+i, y+h-1, grid.Cell{Ch: '─', Style: style})
-	}
-	for j := 1; j < h-1; j++ {
-		r.Frame.Set(x, y+j, grid.Cell{Ch: '│', Style: style})
-		r.Frame.Set(x+w-1, y+j, grid.Cell{Ch: '│', Style: style})
-	}
-}
-
-func fillRect(r *render.Renderer, x, y, w, h int, style grid.Style) {
-	for row := 0; row < h; row++ {
-		for col := 0; col < w; col++ {
-			r.Frame.Set(x+col, y+row, grid.Cell{Ch: ' ', Style: style})
-		}
-	}
 }
 
 func clamp(v, lo, hi int) int {

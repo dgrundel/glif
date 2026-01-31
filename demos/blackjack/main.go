@@ -351,13 +351,9 @@ func drawHand(r *render.Renderer, x, y int, cards []Card, revealAll bool, textSt
 }
 
 func drawCard(r *render.Renderer, x, y int, c Card, reveal bool, textStyle, redStyle, blackStyle grid.Style, sprites map[rune]*render.Sprite, back *render.Sprite) {
-	w, h := 7, 5
 	if !reveal {
 		if back != nil {
 			r.DrawSprite(x, y, back)
-		} else {
-			drawCardBox(r, x, y, w, h, textStyle)
-			fillCardBack(r, x, y, w, h, textStyle)
 		}
 		return
 	}
@@ -368,33 +364,9 @@ func drawCard(r *render.Renderer, x, y int, c Card, reveal bool, textStyle, redS
 	if sprite, ok := sprites[c.Suit]; ok && sprite != nil {
 		r.DrawSprite(x, y, sprite)
 	} else {
-		drawCardBox(r, x, y, w, h, textStyle)
-		r.DrawText(x+3, y+2, string(c.Suit), suitStyle)
+		return
 	}
 	r.DrawText(x+1, y+1, padRight(c.Rank, 2), suitStyle)
-}
-
-func drawCardBox(r *render.Renderer, x, y, w, h int, style grid.Style) {
-	r.Frame.Set(x, y, grid.Cell{Ch: '╭', Style: style})
-	r.Frame.Set(x+w-1, y, grid.Cell{Ch: '╮', Style: style})
-	r.Frame.Set(x, y+h-1, grid.Cell{Ch: '╰', Style: style})
-	r.Frame.Set(x+w-1, y+h-1, grid.Cell{Ch: '╯', Style: style})
-	for i := 1; i < w-1; i++ {
-		r.Frame.Set(x+i, y, grid.Cell{Ch: '─', Style: style})
-		r.Frame.Set(x+i, y+h-1, grid.Cell{Ch: '─', Style: style})
-	}
-	for j := 1; j < h-1; j++ {
-		r.Frame.Set(x, y+j, grid.Cell{Ch: '│', Style: style})
-		r.Frame.Set(x+w-1, y+j, grid.Cell{Ch: '│', Style: style})
-	}
-}
-
-func fillCardBack(r *render.Renderer, x, y, w, h int, style grid.Style) {
-	for row := 1; row < h-1; row++ {
-		for col := 1; col < w-1; col++ {
-			r.Frame.Set(x+col, y+row, grid.Cell{Ch: '░', Style: style})
-		}
-	}
 }
 
 func drawMenu(r *render.Renderer, x, y int, items []string, index int, style grid.Style) {
