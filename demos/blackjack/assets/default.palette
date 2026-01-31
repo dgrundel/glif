@@ -1,3 +1,4 @@
 # key fg bg [bold] [transparent]
 w #ffffff reset
+r #e33b3b reset
 . reset reset transparent

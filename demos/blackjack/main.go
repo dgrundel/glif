@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -39,6 +40,8 @@ type Blackjack struct {
 	dealer []Card
 
 	splash *render.Sprite
+	cards  map[rune]*render.Sprite
+	back   *render.Sprite
 }
 
 type Card struct {
@@ -62,6 +65,8 @@ func NewBlackjack() *Blackjack {
 			"quit_alt": "key:ctrl+c",
 		},
 		splash: splash,
+		cards:  loadCardSprites(),
+		back:   loadSprite("card_back"),
 	}
 	b.resetDeck()
 	return b
@@ -122,10 +127,10 @@ func (b *Blackjack) Draw(r *render.Renderer) {
 	}
 
 	r.DrawText(0, 0, fmt.Sprintf("Dealer hand (%d):", dealerTotal), textStyle)
-	drawHand(r, 0, 1, b.dealer, b.phase != PhasePlayer, textStyle, redStyle)
+	drawHand(r, 0, 1, b.dealer, b.phase != PhasePlayer, textStyle, redStyle, b.cards, b.back)
 
 	r.DrawText(0, 7, fmt.Sprintf("Your hand (%d):", playerTotal), textStyle)
-	drawHand(r, 0, 8, b.player, true, textStyle, redStyle)
+	drawHand(r, 0, 8, b.player, true, textStyle, redStyle, b.cards, b.back)
 
 	switch b.phase {
 	case PhasePlayer:
@@ -299,31 +304,40 @@ func handTotal(cards []Card) int {
 	return sum
 }
 
-func drawHand(r *render.Renderer, x, y int, cards []Card, revealAll bool, textStyle, redStyle grid.Style) {
+func drawHand(r *render.Renderer, x, y int, cards []Card, revealAll bool, textStyle, redStyle grid.Style, sprites map[rune]*render.Sprite, back *render.Sprite) {
 	cx := x
 	for i, c := range cards {
 		reveal := revealAll
 		if i == 1 && !revealAll {
 			reveal = false
 		}
-		drawCard(r, cx, y, c, reveal, textStyle, redStyle)
+		drawCard(r, cx, y, c, reveal, textStyle, redStyle, sprites, back)
 		cx += 8
 	}
 }
 
-func drawCard(r *render.Renderer, x, y int, c Card, reveal bool, textStyle, redStyle grid.Style) {
+func drawCard(r *render.Renderer, x, y int, c Card, reveal bool, textStyle, redStyle grid.Style, sprites map[rune]*render.Sprite, back *render.Sprite) {
 	w, h := 7, 5
-	drawCardBox(r, x, y, w, h, textStyle)
 	if !reveal {
-		fillCardBack(r, x, y, w, h, textStyle)
+		if back != nil {
+			r.DrawSprite(x, y, back)
+		} else {
+			drawCardBox(r, x, y, w, h, textStyle)
+			fillCardBack(r, x, y, w, h, textStyle)
+		}
 		return
 	}
 	suitStyle := textStyle
 	if c.Suit == '♥' || c.Suit == '♦' {
 		suitStyle = redStyle
 	}
+	if sprite, ok := sprites[c.Suit]; ok && sprite != nil {
+		r.DrawSprite(x, y, sprite)
+	} else {
+		drawCardBox(r, x, y, w, h, textStyle)
+		r.DrawText(x+3, y+2, string(c.Suit), suitStyle)
+	}
 	r.DrawText(x+1, y+1, padRight(c.Rank, 2), suitStyle)
-	r.DrawText(x+3, y+2, string(c.Suit), suitStyle)
 }
 
 func drawCardBox(r *render.Renderer, x, y, w, h int, style grid.Style) {
@@ -364,6 +378,26 @@ func padRight(s string, w int) string {
 		return s
 	}
 	return s + strings.Repeat(" ", w-len(s))
+}
+
+func loadCardSprites() map[rune]*render.Sprite {
+	sprites := map[rune]*render.Sprite{}
+	load := func(suit rune, base string) {
+		sprites[suit] = loadSprite(base)
+	}
+	load('♠', "card_spades")
+	load('♣', "card_clubs")
+	load('♥', "card_hearts")
+	load('♦', "card_diamonds")
+	return sprites
+}
+
+func loadSprite(base string) *render.Sprite {
+	sprite, err := assets.LoadMaskedSprite(filepath.Join("demos/blackjack/assets", base))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return sprite
 }
 
 func main() {
