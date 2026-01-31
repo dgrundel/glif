@@ -19,6 +19,7 @@ type Game struct {
 	screenH int
 	state   input.State
 	binds   input.ActionMap
+	quit    bool
 }
 
 func NewGame() *Game {
@@ -43,6 +44,8 @@ func NewGame() *Game {
 			"move_left":  "a",
 			"move_right": "d",
 			"stop":       " ",
+			"quit":       "key:esc",
+			"quit_alt":   "key:ctrl+c",
 		},
 	}
 }
@@ -50,6 +53,9 @@ func NewGame() *Game {
 func (g *Game) Update(dt float64) {
 	g.applyMovement()
 	g.world.Update(dt)
+	if g.pressed("quit") || g.pressed("quit_alt") {
+		g.quit = true
+	}
 }
 
 func (g *Game) Draw(r *render.Renderer) {
@@ -57,13 +63,6 @@ func (g *Game) Draw(r *render.Renderer) {
 }
 
 func (g *Game) HandleEvent(ev tcell.Event) bool {
-	switch ev := ev.(type) {
-	case *tcell.EventKey:
-		keyID := input.KeyID(ev)
-		if keyID == input.Key("key:esc") || keyID == input.Key("key:ctrl+c") {
-			return true
-		}
-	}
 	return false
 }
 
@@ -116,6 +115,10 @@ func (g *Game) applyMovement() {
 		dy *= scale
 	}
 	g.setVelocity(dx*speed, dy*speed)
+}
+
+func (g *Game) ShouldQuit() bool {
+	return g.quit
 }
 
 func (g *Game) held(action input.Action) bool {

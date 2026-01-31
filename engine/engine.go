@@ -21,6 +21,10 @@ type InputAware interface {
 	SetInput(state input.State)
 }
 
+type Quitter interface {
+	ShouldQuit() bool
+}
+
 type Engine struct {
 	Screen   *term.Screen
 	Renderer *render.Renderer
@@ -108,6 +112,9 @@ func (e *Engine) Run(game Game) error {
 			for accumulator >= step {
 				game.Update(step)
 				accumulator -= step
+			}
+			if q, ok := game.(Quitter); ok && q.ShouldQuit() {
+				return nil
 			}
 
 			e.Renderer.Clear()
