@@ -65,6 +65,28 @@ Example `.map`:
 
 Sprite names in `.tiles` are base paths (same as `assets.LoadMaskedSprite`).
 
+## Sprite example
+
+`duck.sprite`:
+```
+>o)
+(_>
+```
+
+`duck.mask`:
+```
+gww
+wwg
+```
+
+`duck.palette`:
+```
+# key fg bg [bold] [transparent]
+w #ffffff #0000ff
+g #ffd700 #0000ff
+. reset reset transparent
+```
+
 ## Mask generator
 
 Generate a mask from a sprite:
