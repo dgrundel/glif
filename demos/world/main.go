@@ -9,10 +9,9 @@ import (
 	"github.com/dgrundel/glif/engine"
 	"github.com/dgrundel/glif/grid"
 	"github.com/dgrundel/glif/input"
+	"github.com/dgrundel/glif/palette"
 	"github.com/dgrundel/glif/render"
 	"github.com/dgrundel/glif/tilemap"
-	"github.com/gdamore/tcell/v3"
-	"github.com/gdamore/tcell/v3/color"
 )
 
 type Demo struct {
@@ -23,9 +22,18 @@ type Demo struct {
 	binds  input.ActionMap
 	player ecs.Entity
 	quit   bool
+	bg     grid.Style
 }
 
 func NewDemo() *Demo {
+	pal, err := palette.Load("demos/world/assets/ui.palette")
+	if err != nil {
+		log.Fatal(err)
+	}
+	bg, err := pal.Style('b')
+	if err != nil {
+		log.Fatal(err)
+	}
 	world := ecs.NewWorld()
 	cam := &camera.Camera{}
 	world.Camera = cam
@@ -79,6 +87,7 @@ func NewDemo() *Demo {
 			"quit":       "key:esc",
 			"quit_alt":   "key:ctrl+c",
 		},
+		bg: bg,
 	}
 }
 
@@ -204,13 +213,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	eng.Frame.Clear = grid.Cell{
-		Ch: ' ',
-		Style: grid.Style{
-			Fg: tcell.ColorReset,
-			Bg: color.Blue,
-		},
-	}
+	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: demo.bg}
 	eng.Frame.ClearAll()
 	if err := eng.Run(demo); err != nil {
 		log.Fatal(err)

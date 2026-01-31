@@ -12,8 +12,8 @@ import (
 	"github.com/dgrundel/glif/engine"
 	"github.com/dgrundel/glif/grid"
 	"github.com/dgrundel/glif/input"
+	"github.com/dgrundel/glif/palette"
 	"github.com/dgrundel/glif/render"
-	"github.com/gdamore/tcell/v3"
 )
 
 type Phase int
@@ -42,6 +42,9 @@ type Blackjack struct {
 	splash *render.Sprite
 	cards  map[rune]*render.Sprite
 	back   *render.Sprite
+	uiText grid.Style
+	uiRed  grid.Style
+	bg     grid.Style
 	width  int
 	height int
 }
@@ -53,6 +56,22 @@ type Card struct {
 
 func NewBlackjack() *Blackjack {
 	splash, err := assets.LoadMaskedSprite("demos/blackjack/assets/splash")
+	if err != nil {
+		log.Fatal(err)
+	}
+	pal, err := palette.Load("demos/blackjack/assets/ui.palette")
+	if err != nil {
+		log.Fatal(err)
+	}
+	uiText, err := pal.Style('w')
+	if err != nil {
+		log.Fatal(err)
+	}
+	uiRed, err := pal.Style('r')
+	if err != nil {
+		log.Fatal(err)
+	}
+	bg, err := pal.Style('b')
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -69,6 +88,9 @@ func NewBlackjack() *Blackjack {
 		splash: splash,
 		cards:  loadCardSprites(),
 		back:   loadSprite("card_back"),
+		uiText: uiText,
+		uiRed:  uiRed,
+		bg:     bg,
 	}
 	b.resetDeck()
 	return b
@@ -113,8 +135,8 @@ func (b *Blackjack) Update(dt float64) {
 }
 
 func (b *Blackjack) Draw(r *render.Renderer) {
-	textStyle := grid.Style{Fg: tcell.ColorWhite, Bg: tcell.ColorReset}
-	redStyle := grid.Style{Fg: tcell.NewRGBColor(220, 40, 40), Bg: tcell.ColorReset}
+	textStyle := b.uiText
+	redStyle := b.uiRed
 
 	switch b.phase {
 	case PhaseSplash:
@@ -445,7 +467,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: grid.Style{Fg: tcell.ColorReset, Bg: tcell.NewRGBColor(0x2b, 0xa9, 0x3d)}}
+	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: game.bg}
 	eng.Frame.ClearAll()
 	if err := eng.Run(game); err != nil {
 		log.Fatal(err)

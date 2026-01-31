@@ -8,6 +8,7 @@ import (
 	"github.com/dgrundel/glif/engine"
 	"github.com/dgrundel/glif/grid"
 	"github.com/dgrundel/glif/input"
+	"github.com/dgrundel/glif/palette"
 	"github.com/dgrundel/glif/render"
 	"github.com/gdamore/tcell/v3"
 )
@@ -22,9 +23,18 @@ type Picker struct {
 	decHeld  float64
 	incSpeed float64
 	decSpeed float64
+	uiStyle  grid.Style
 }
 
 func NewPicker() *Picker {
+	pal, err := palette.Load("demos/picker/assets/ui.palette")
+	if err != nil {
+		log.Fatal(err)
+	}
+	uiStyle, err := pal.Style('t')
+	if err != nil {
+		log.Fatal(err)
+	}
 	return &Picker{
 		values: [3]int{100, 255, 105},
 		binds: input.ActionMap{
@@ -35,6 +45,7 @@ func NewPicker() *Picker {
 			"quit":        "key:esc",
 			"quit_alt":    "key:ctrl+c",
 		},
+		uiStyle: uiStyle,
 	}
 }
 
@@ -86,7 +97,7 @@ func (p *Picker) Draw(r *render.Renderer) {
 	}
 
 	boxStyle := grid.Style{Fg: tcell.ColorWhite, Bg: tcell.ColorReset}
-	textStyle := grid.Style{Fg: tcell.ColorWhite, Bg: tcell.ColorReset}
+	textStyle := p.uiStyle
 
 	for i := 0; i < 3; i++ {
 		y := startY + i*(barH+rowGap)

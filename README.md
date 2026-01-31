@@ -8,6 +8,7 @@
 - `grid`: core types (`Vec2i`, `Cell`, `Frame`)
 - `render`: draw helpers and sprite support
 - `assets`: sprite loaders (masked sprites + palettes)
+- `palette`: shared palette loader for UI + sprites
 - `ecs`: lightweight component/system world + z-ordered sprite rendering
 - `input`: generic key-state tracking (held/pressed) with TTL
 - `demos/duck`: demo scene
@@ -63,6 +64,15 @@ www
 w #ffffff #0000ff
 g #ffd700 #0000ff
 . reset reset transparent
+```
+
+## UI palettes
+
+Load a palette and fetch styles by key:
+
+```
+pal, err := palette.Load("path/to/ui.palette")
+style, err := pal.Style('x')
 ```
 
 ## Tile maps

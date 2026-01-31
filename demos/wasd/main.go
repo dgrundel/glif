@@ -8,8 +8,8 @@ import (
 	"github.com/dgrundel/glif/engine"
 	"github.com/dgrundel/glif/grid"
 	"github.com/dgrundel/glif/input"
+	"github.com/dgrundel/glif/palette"
 	"github.com/dgrundel/glif/render"
-	"github.com/gdamore/tcell/v3"
 )
 
 type Game struct {
@@ -19,10 +19,19 @@ type Game struct {
 	screenH int
 	state   input.State
 	binds   input.ActionMap
+	bg      grid.Style
 	quit    bool
 }
 
 func NewGame() *Game {
+	pal, err := palette.Load("demos/wasd/assets/ui.palette")
+	if err != nil {
+		log.Fatal(err)
+	}
+	bg, err := pal.Style('b')
+	if err != nil {
+		log.Fatal(err)
+	}
 	world := ecs.NewWorld()
 
 	duck, err := assets.LoadMaskedSprite("demos/wasd/assets/duck")
@@ -47,6 +56,7 @@ func NewGame() *Game {
 			"quit":       "key:esc",
 			"quit_alt":   "key:ctrl+c",
 		},
+		bg: bg,
 	}
 }
 
@@ -139,13 +149,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	eng.Frame.Clear = grid.Cell{
-		Ch: ' ',
-		Style: grid.Style{
-			Fg: tcell.ColorReset,
-			Bg: tcell.ColorBlue,
-		},
-	}
+	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: game.bg}
 	eng.Frame.ClearAll()
 	if err := eng.Run(game); err != nil {
 		log.Fatal(err)
