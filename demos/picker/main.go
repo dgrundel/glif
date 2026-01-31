@@ -20,6 +20,8 @@ type Picker struct {
 	values   [3]int
 	incHeld  float64
 	decHeld  float64
+	incSpeed float64
+	decSpeed float64
 }
 
 func NewPicker() *Picker {
@@ -163,26 +165,30 @@ func (p *Picker) adjustValue(dt float64) {
 	if p.held("dec") {
 		p.decHeld += dt
 		if p.decHeld >= repeatDelay {
-			steps := int(math.Floor((p.decHeld - repeatDelay) * repeatRate))
+			p.decSpeed = math.Min(p.decSpeed+dt*24.0, 80.0)
+			steps := int(math.Floor((p.decHeld - repeatDelay) * p.decSpeed))
 			if steps > 0 {
 				delta -= steps
-				p.decHeld -= float64(steps) / repeatRate
+				p.decHeld -= float64(steps) / p.decSpeed
 			}
 		}
 	} else {
 		p.decHeld = 0
+		p.decSpeed = repeatRate
 	}
 	if p.held("inc") {
 		p.incHeld += dt
 		if p.incHeld >= repeatDelay {
-			steps := int(math.Floor((p.incHeld - repeatDelay) * repeatRate))
+			p.incSpeed = math.Min(p.incSpeed+dt*24.0, 80.0)
+			steps := int(math.Floor((p.incHeld - repeatDelay) * p.incSpeed))
 			if steps > 0 {
 				delta += steps
-				p.incHeld -= float64(steps) / repeatRate
+				p.incHeld -= float64(steps) / p.incSpeed
 			}
 		}
 	} else {
 		p.incHeld = 0
+		p.incSpeed = repeatRate
 	}
 
 	if delta == 0 {
