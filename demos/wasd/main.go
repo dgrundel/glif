@@ -33,13 +33,13 @@ func NewGame() *Game {
 	world.AddVelocity(player, 0, 0)
 	world.AddSprite(player, duck, 0)
 
-	return &Game{world: world, player: player, input: input.New(0.15)}
+	return &Game{world: world, player: player, input: input.New(0.12)}
 }
 
 func (g *Game) Update(dt float64) {
-	g.world.Update(dt)
 	state := g.input.Step(dt)
 	g.applyMovement(state)
+	g.world.Update(dt)
 }
 
 func (g *Game) Draw(r *render.Renderer) {
@@ -81,16 +81,16 @@ func (g *Game) applyMovement(state input.State) {
 	speed := 10.0
 	dx := 0.0
 	dy := 0.0
-	if state.Held["a"] {
+	if state.Held["a"] || state.Pressed["a"] {
 		dx -= 1
 	}
-	if state.Held["d"] {
+	if state.Held["d"] || state.Pressed["d"] {
 		dx += 1
 	}
-	if state.Held["w"] {
+	if state.Held["w"] || state.Pressed["w"] {
 		dy -= 1
 	}
-	if state.Held["s"] {
+	if state.Held["s"] || state.Pressed["s"] {
 		dy += 1
 	}
 	if state.Pressed[" "] {

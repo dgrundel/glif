@@ -46,6 +46,12 @@ func (e *Engine) Run(game Game) error {
 	ticker := time.NewTicker(e.Tick)
 	defer ticker.Stop()
 	last := time.Now()
+	accumulator := 0.0
+	step := e.Tick.Seconds()
+	if step <= 0 {
+		step = 1.0 / 30.0
+	}
+	const maxAccum = 0.25
 
 	for {
 		select {
@@ -53,11 +59,39 @@ func (e *Engine) Run(game Game) error {
 			now := time.Now()
 			dt := now.Sub(last).Seconds()
 			last = now
-			if dt > 0.1 {
-				dt = 0.1
+
+			// Drain any pending input events to avoid starving input when tick is busy.
+			for {
+				select {
+				case ev := <-events:
+					switch ev := ev.(type) {
+					case *tcell.EventResize:
+						e.Screen.Sync()
+						w, h := e.Screen.Size()
+						e.Frame.Resize(w, h)
+						e.Renderer.SetFrame(e.Frame)
+						game.Resize(w, h)
+					default:
+						if game.HandleEvent(ev) {
+							return nil
+						}
+					}
+				default:
+					goto updates
+				}
 			}
 
-			game.Update(dt)
+		updates:
+			accumulator += dt
+			if accumulator > maxAccum {
+				accumulator = maxAccum
+			}
+
+			for accumulator >= step {
+				game.Update(step)
+				accumulator -= step
+			}
+
 			e.Renderer.Clear()
 			game.Draw(e.Renderer)
 			e.Screen.Present(e.Renderer.Frame)
