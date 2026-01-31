@@ -39,14 +39,15 @@ type Blackjack struct {
 	player []Card
 	dealer []Card
 
-	splash *render.Sprite
-	cards  map[rune]*render.Sprite
-	back   *render.Sprite
-	uiText grid.Style
-	uiRed  grid.Style
-	bg     grid.Style
-	width  int
-	height int
+	splash  *render.Sprite
+	cards   map[rune]*render.Sprite
+	back    *render.Sprite
+	uiText  grid.Style
+	uiRed   grid.Style
+	uiBlack grid.Style
+	bg      grid.Style
+	width   int
+	height  int
 }
 
 type Card struct {
@@ -71,6 +72,10 @@ func NewBlackjack() *Blackjack {
 	if err != nil {
 		log.Fatal(err)
 	}
+	uiBlack, err := pal.Style('b')
+	if err != nil {
+		log.Fatal(err)
+	}
 	bg, err := pal.Style('z')
 	if err != nil {
 		log.Fatal(err)
@@ -85,12 +90,13 @@ func NewBlackjack() *Blackjack {
 			"quit":     "key:esc",
 			"quit_alt": "key:ctrl+c",
 		},
-		splash: splash,
-		cards:  loadCardSprites(),
-		back:   loadSprite("card_back"),
-		uiText: uiText,
-		uiRed:  uiRed,
-		bg:     bg,
+		splash:  splash,
+		cards:   loadCardSprites(),
+		back:    loadSprite("card_back"),
+		uiText:  uiText,
+		uiRed:   uiRed,
+		uiBlack: uiBlack,
+		bg:      bg,
 	}
 	b.resetDeck()
 	return b
@@ -137,6 +143,7 @@ func (b *Blackjack) Update(dt float64) {
 func (b *Blackjack) Draw(r *render.Renderer) {
 	textStyle := b.uiText
 	redStyle := b.uiRed
+	blackStyle := b.uiBlack
 
 	switch b.phase {
 	case PhaseSplash:
@@ -152,10 +159,10 @@ func (b *Blackjack) Draw(r *render.Renderer) {
 
 	x0, y0 := b.layoutOffsets(r, dealerTotal, playerTotal)
 	r.DrawText(x0, y0, fmt.Sprintf("Dealer hand (%d):", dealerTotal), textStyle)
-	drawHand(r, x0, y0+1, b.dealer, b.phase != PhasePlayer, textStyle, redStyle, b.cards, b.back)
+	drawHand(r, x0, y0+1, b.dealer, b.phase != PhasePlayer, textStyle, redStyle, blackStyle, b.cards, b.back)
 
 	r.DrawText(x0, y0+7, fmt.Sprintf("Your hand (%d):", playerTotal), textStyle)
-	drawHand(r, x0, y0+8, b.player, true, textStyle, redStyle, b.cards, b.back)
+	drawHand(r, x0, y0+8, b.player, true, textStyle, redStyle, blackStyle, b.cards, b.back)
 
 	switch b.phase {
 	case PhasePlayer:
@@ -331,19 +338,19 @@ func handTotal(cards []Card) int {
 	return sum
 }
 
-func drawHand(r *render.Renderer, x, y int, cards []Card, revealAll bool, textStyle, redStyle grid.Style, sprites map[rune]*render.Sprite, back *render.Sprite) {
+func drawHand(r *render.Renderer, x, y int, cards []Card, revealAll bool, textStyle, redStyle, blackStyle grid.Style, sprites map[rune]*render.Sprite, back *render.Sprite) {
 	cx := x
 	for i, c := range cards {
 		reveal := revealAll
 		if i == 1 && !revealAll {
 			reveal = false
 		}
-		drawCard(r, cx, y, c, reveal, textStyle, redStyle, sprites, back)
+		drawCard(r, cx, y, c, reveal, textStyle, redStyle, blackStyle, sprites, back)
 		cx += 8
 	}
 }
 
-func drawCard(r *render.Renderer, x, y int, c Card, reveal bool, textStyle, redStyle grid.Style, sprites map[rune]*render.Sprite, back *render.Sprite) {
+func drawCard(r *render.Renderer, x, y int, c Card, reveal bool, textStyle, redStyle, blackStyle grid.Style, sprites map[rune]*render.Sprite, back *render.Sprite) {
 	w, h := 7, 5
 	if !reveal {
 		if back != nil {
@@ -354,7 +361,7 @@ func drawCard(r *render.Renderer, x, y int, c Card, reveal bool, textStyle, redS
 		}
 		return
 	}
-	suitStyle := textStyle
+	suitStyle := blackStyle
 	if c.Suit == '♥' || c.Suit == '♦' {
 		suitStyle = redStyle
 	}
