@@ -18,6 +18,8 @@ type Picker struct {
 	quit     bool
 	selected int
 	values   [3]int
+	incHeld  float64
+	decHeld  float64
 }
 
 func NewPicker() *Picker {
@@ -148,18 +150,38 @@ func (p *Picker) adjustValue(dt float64) {
 	delta := 0
 	if p.pressed("dec") {
 		delta -= 1
+		p.decHeld = 0
 	}
 	if p.pressed("inc") {
 		delta += 1
+		p.incHeld = 0
 	}
 
-	const rate = 60.0
-	step := int(math.Max(1, math.Round(rate*dt)))
+	const repeatDelay = 0.25
+	const repeatRate = 18.0
 	if p.held("dec") {
-		delta -= step
+		p.decHeld += dt
+		if p.decHeld >= repeatDelay {
+			steps := int(math.Floor((p.decHeld - repeatDelay) * repeatRate))
+			if steps > 0 {
+				delta -= steps
+				p.decHeld -= float64(steps) / repeatRate
+			}
+		}
+	} else {
+		p.decHeld = 0
 	}
 	if p.held("inc") {
-		delta += step
+		p.incHeld += dt
+		if p.incHeld >= repeatDelay {
+			steps := int(math.Floor((p.incHeld - repeatDelay) * repeatRate))
+			if steps > 0 {
+				delta += steps
+				p.incHeld -= float64(steps) / repeatRate
+			}
+		}
+	} else {
+		p.incHeld = 0
 	}
 
 	if delta == 0 {
