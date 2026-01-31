@@ -342,8 +342,8 @@ func drawHand(r *render.Renderer, x, y int, cards []Card, revealAll bool, textSt
 	cx := x
 	for i, c := range cards {
 		reveal := revealAll
-		if i == 1 && !revealAll {
-			reveal = false
+		if !revealAll {
+			reveal = i == 0
 		}
 		drawCard(r, cx, y, c, reveal, textStyle, redStyle, blackStyle, sprites, back)
 		cx += 8
