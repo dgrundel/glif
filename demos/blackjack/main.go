@@ -76,7 +76,7 @@ func NewBlackjack() *Blackjack {
 	if err != nil {
 		log.Fatal(err)
 	}
-	bg, err := pal.Style('z')
+	bg, err := pal.Style('w')
 	if err != nil {
 		log.Fatal(err)
 	}
