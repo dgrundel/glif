@@ -12,6 +12,7 @@
 - `input`: generic key-state tracking (held/pressed) with TTL
 - `demos/duck`: demo scene
 - `demos/wasd`: demo with keyboard movement
+- `demos/world`: demo with camera panning and tilemap background
 - `utils/genmask`: sprite mask generator
 
 ## Demo
@@ -41,6 +42,28 @@ assets.LoadMaskedSprite("path/to/name")
 Palette colors support:
 - Hex RGB (`#RRGGBB` or `#RGB`)
 - Named colors supported by tcell
+
+## Tile maps
+
+Tile maps can be loaded from a text map and a tiles file:
+
+```
+tilemap.LoadFromFiles("path/to/level.map", "path/to/level.tiles")
+```
+
+Example `.tiles`:
+```
+~ water
+. empty
+```
+
+Example `.map`:
+```
+~~~~..~~
+~..~~..~
+```
+
+Sprite names in `.tiles` are base paths (same as `assets.LoadMaskedSprite`).
 
 ## Mask generator
 
