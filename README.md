@@ -54,7 +54,7 @@ Example:
 `duck.mask`:
 ```
 gww
-wwg
+www
 ```
 
 `duck.palette`:
