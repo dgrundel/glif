@@ -102,12 +102,16 @@ A minimal package split that scales well:
    - Load masked sprites from files
    - Mask/palette conventions for color and transparency
 
-5. `ecs`
+5. `input`
+   - Generic key state tracking
+   - Held/pressed states derived from terminal events
+
+6. `ecs`
    - Minimal ECS world (positions, velocities, sprites)
    - Built-in movement system
    - Z-ordered rendering
 
-6. `engine`
+7. `engine`
    - Main loop
    - Timing
    - Glue code

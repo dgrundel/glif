@@ -9,7 +9,9 @@
 - `render`: draw helpers and sprite support
 - `assets`: sprite loaders (masked sprites + palettes)
 - `ecs`: lightweight component/system world + z-ordered sprite rendering
+- `input`: generic key-state tracking (held/pressed) with TTL
 - `demos/duck`: demo scene
+- `demos/wasd`: demo with keyboard movement
 - `utils/genmask`: sprite mask generator
 
 ## Demo
