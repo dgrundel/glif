@@ -54,6 +54,11 @@ func (s *Screen) EnsureSize(w, h int) {
 	s.front = grid.NewFrame(w, h, clear)
 }
 
+func (s *Screen) Clear() {
+	s.screen.Clear()
+	s.front.ClearAll()
+}
+
 func (s *Screen) Present(back *grid.Frame) {
 	if back == nil {
 		return

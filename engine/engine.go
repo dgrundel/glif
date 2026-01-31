@@ -85,6 +85,7 @@ func (e *Engine) Run(game Game) error {
 						w, h := e.Screen.Size()
 						e.Frame.Resize(w, h)
 						e.Renderer.SetFrame(e.Frame)
+						e.Screen.Clear()
 						game.Resize(w, h)
 					default:
 						e.Input.HandleEvent(ev)
@@ -123,6 +124,7 @@ func (e *Engine) Run(game Game) error {
 				w, h := e.Screen.Size()
 				e.Frame.Resize(w, h)
 				e.Renderer.SetFrame(e.Frame)
+				e.Screen.Clear()
 				game.Resize(w, h)
 			default:
 				e.Input.HandleEvent(ev)
