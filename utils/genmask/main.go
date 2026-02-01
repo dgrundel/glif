@@ -15,12 +15,12 @@ func main() {
 		transparent string
 	)
 	flag.StringVar(&outPath, "out", "", "output .mask path (defaults to same base name)")
-	flag.StringVar(&fill, "fill", "w", "mask rune for non-space cells")
+	flag.StringVar(&fill, "fill", "x", "mask rune for non-space cells")
 	flag.StringVar(&transparent, "transparent", ".", "mask rune for spaces")
 	flag.Parse()
 
 	if flag.NArg() != 1 {
-		fmt.Fprintln(os.Stderr, "usage: genmask [--out path] [--fill w] [--transparent .] path/to/sprite.sprite")
+		fmt.Fprintln(os.Stderr, "usage: genmask [--out path] [--fill x] [--transparent .] path/to/sprite.sprite")
 		os.Exit(2)
 	}
 	if len(fill) != 1 || len(transparent) != 1 {

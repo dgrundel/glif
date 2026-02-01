@@ -12,7 +12,7 @@ go run ./utils/genmask path/to/sprite.sprite
 
 ```
 --out path/to/output.mask
---fill w
+--fill x
 --transparent .
 ```
 
