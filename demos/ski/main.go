@@ -43,8 +43,8 @@ type SkiGame struct {
 	binds input.ActionMap
 	quit  bool
 
-	score    int
-	gameOver bool
+	score          int
+	gameOver       bool
 	gameOverReason string
 
 	playerX    float64
@@ -67,6 +67,8 @@ type SkiGame struct {
 	speedPen   float64
 	nextGateY  float64
 	lastGateCX float64
+	leftTTL    float64
+	rightTTL   float64
 	gates      []Gate
 	obstacles  []Obstacle
 	rng        *rand.Rand
@@ -91,13 +93,13 @@ func NewSkiGame() *SkiGame {
 
 	g := &SkiGame{
 		binds: input.ActionMap{
-			"left":      "key:left",
-			"right":     "key:right",
-			"left_alt":  "a",
-			"right_alt": "d",
-			"quit":      "key:esc",
-			"quit_alt":  "key:ctrl+c",
-			"restart":   "key:enter",
+			"left":        "key:left",
+			"right":       "key:right",
+			"left_alt":    "a",
+			"right_alt":   "d",
+			"quit":        "key:esc",
+			"quit_alt":    "key:ctrl+c",
+			"restart":     "key:enter",
 			"restart_alt": " ",
 		},
 		skiDown:   load("ski_down"),
@@ -144,8 +146,9 @@ func (g *SkiGame) Update(dt float64) {
 		return
 	}
 
-	left := g.held("left") || g.held("left_alt")
-	right := g.held("right") || g.held("right_alt")
+	g.tickSteerTTL(dt)
+	left := g.steerHeld("left", "left_alt")
+	right := g.steerHeld("right", "right_alt")
 	moveSpd := g.speed - g.speedPen
 	if moveSpd < 0 {
 		moveSpd = 0
@@ -267,6 +270,37 @@ func (g *SkiGame) held(action input.Action) bool {
 		return false
 	}
 	return g.state.Held[key]
+}
+
+func (g *SkiGame) tickSteerTTL(dt float64) {
+	if g.pressed("left") || g.pressed("left_alt") {
+		g.leftTTL = 0.35
+	}
+	if g.pressed("right") || g.pressed("right_alt") {
+		g.rightTTL = 0.35
+	}
+	if g.leftTTL > 0 {
+		g.leftTTL -= dt
+		if g.leftTTL < 0 {
+			g.leftTTL = 0
+		}
+	}
+	if g.rightTTL > 0 {
+		g.rightTTL -= dt
+		if g.rightTTL < 0 {
+			g.rightTTL = 0
+		}
+	}
+}
+
+func (g *SkiGame) steerHeld(primary, alt input.Action) bool {
+	if g.held(primary) || g.held(alt) {
+		return true
+	}
+	if primary == "left" {
+		return g.leftTTL > 0
+	}
+	return g.rightTTL > 0
 }
 
 func (g *SkiGame) generateWorld() {
