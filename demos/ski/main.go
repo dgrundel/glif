@@ -23,6 +23,35 @@ const (
 	ObstacleRough
 )
 
+const (
+	initialSpeed             = 8.4
+	speedRampCap             = 7.0
+	speedRampDistance        = 120.0
+	speedAccel               = 2.5
+	speedDecel               = 1.0
+	speedPenaltyDecay        = 1.0
+	roughSpeedPenalty        = 2.0
+	strafeBaseSpeed          = 16.0
+	strafeSpeedScale         = 0.9
+	steerTTLSeconds          = 0.35
+	gateStartOffset          = 12.0
+	gateSpacingStart         = 16.0
+	gateSpacingMin           = 8.0
+	gateSpacingTightenFactor = 100.0
+	gateGapWidth             = 6.0
+	gateNearBuffer           = 2.0
+	gateRowsStep             = 2.0
+	gateLookaheadPadding     = 10.0
+	treeSpawnChance          = 0.28
+	roughSpawnChance         = 0.16
+	treeSpawnMinRow          = 12.0
+	treeEdgeBiasBase         = 0.6
+	treeEdgeBiasScale        = 14.0
+	treeEdgeBiasMaxBoost     = 1.2
+	screenScorePadRight      = 2
+	screenMessageOffsetY     = 2
+)
+
 type Gate struct {
 	Y      float64
 	LeftX  float64
@@ -110,8 +139,8 @@ func NewSkiGame() *SkiGame {
 		tree:      load("trees"),
 		rough:     load("snow_rough"),
 		uiStyle:   uiStyle,
-		speed:     8.4,
-		targetSpd: 8.4,
+		speed:     initialSpeed,
+		targetSpd: initialSpeed,
 		rng:       rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 	g.playerSpr = g.skiDown
@@ -125,8 +154,8 @@ func (g *SkiGame) reset() {
 	g.gameOverReason = ""
 	g.playerX = 0
 	g.playerY = 0
-	g.speed = 8.4
-	g.targetSpd = 8.4
+	g.speed = initialSpeed
+	g.targetSpd = initialSpeed
 	g.speedPen = 0
 	g.nextGateY = 0
 	g.lastGateCX = g.playerX
@@ -154,7 +183,7 @@ func (g *SkiGame) Update(dt float64) {
 		moveSpd = 0
 	}
 
-	strafe := maxFloat(16.0, moveSpd*0.9)
+	strafe := maxFloat(strafeBaseSpeed, moveSpd*strafeSpeedScale)
 	if left && !right {
 		g.playerSpr = g.skiLeft
 		g.playerX -= strafe * dt
@@ -166,20 +195,20 @@ func (g *SkiGame) Update(dt float64) {
 	}
 
 	distance := g.playerY
-	g.targetSpd = 8.4 + math.Min(7.0, distance/120.0)
+	g.targetSpd = initialSpeed + math.Min(speedRampCap, distance/speedRampDistance)
 	if g.speed < g.targetSpd {
-		g.speed += 2.5 * dt
+		g.speed += speedAccel * dt
 		if g.speed > g.targetSpd {
 			g.speed = g.targetSpd
 		}
 	} else if g.speed > g.targetSpd {
-		g.speed -= 1.0 * dt
+		g.speed -= speedDecel * dt
 		if g.speed < g.targetSpd {
 			g.speed = g.targetSpd
 		}
 	}
 	if g.speedPen > 0 {
-		g.speedPen -= 1.0 * dt
+		g.speedPen -= speedPenaltyDecay * dt
 		if g.speedPen < 0 {
 			g.speedPen = 0
 		}
@@ -225,7 +254,7 @@ func (g *SkiGame) Draw(r *render.Renderer) {
 	r.DrawSprite(px, py, g.playerSpr)
 
 	scoreText := fmt.Sprintf("Score: %d", g.score)
-	r.DrawText(r.Frame.W-len(scoreText)-2, 0, scoreText, g.uiStyle)
+	r.DrawText(r.Frame.W-len(scoreText)-screenScorePadRight, 0, scoreText, g.uiStyle)
 
 	if g.gameOver {
 		msg := "Press Enter or Space to restart."
@@ -233,7 +262,7 @@ func (g *SkiGame) Draw(r *render.Renderer) {
 			msg = fmt.Sprintf("%s. Press Enter or Space to restart.", g.gameOverReason)
 		}
 		x := max(0, (r.Frame.W-len(msg))/2)
-		y := max(0, g.screenPY-2)
+		y := max(0, g.screenPY-screenMessageOffsetY)
 		r.DrawText(x, y, msg, g.uiStyle)
 	}
 }
@@ -274,10 +303,10 @@ func (g *SkiGame) held(action input.Action) bool {
 
 func (g *SkiGame) tickSteerTTL(dt float64) {
 	if g.pressed("left") || g.pressed("left_alt") {
-		g.leftTTL = 0.35
+		g.leftTTL = steerTTLSeconds
 	}
 	if g.pressed("right") || g.pressed("right_alt") {
-		g.rightTTL = 0.35
+		g.rightTTL = steerTTLSeconds
 	}
 	if g.leftTTL > 0 {
 		g.leftTTL -= dt
@@ -304,9 +333,9 @@ func (g *SkiGame) steerHeld(primary, alt input.Action) bool {
 }
 
 func (g *SkiGame) generateWorld() {
-	lookahead := float64(g.height + 10)
+	lookahead := float64(g.height) + gateLookaheadPadding
 	if g.nextGateY == 0 {
-		g.nextGateY = g.playerY + 12
+		g.nextGateY = g.playerY + gateStartOffset
 		g.lastGateCX = g.playerX
 	}
 	for g.nextGateY < g.playerY+lookahead {
@@ -325,9 +354,9 @@ func (g *SkiGame) generateWorld() {
 }
 
 func (g *SkiGame) gateSpacing() float64 {
-	spacing := 16.0 - g.playerY/100.0
-	if spacing < 8.0 {
-		spacing = 8.0
+	spacing := gateSpacingStart - g.playerY/gateSpacingTightenFactor
+	if spacing < gateSpacingMin {
+		spacing = gateSpacingMin
 	}
 	return spacing
 }
@@ -339,33 +368,33 @@ func (g *SkiGame) nextGateCenter(spacing float64) float64 {
 }
 
 func (g *SkiGame) gatePositions(center float64) (float64, float64) {
-	gap := 6.0
+	gap := gateGapWidth
 	leftX := center - gap/2.0 - float64(g.flagLeft.W)
 	rightX := leftX + float64(g.flagLeft.W) + gap
 	return leftX, rightX
 }
 
 func (g *SkiGame) spawnObstacles(gateY, spacing, center float64) {
-	startY := gateY - spacing + 2
-	endY := gateY - 2
+	startY := gateY - spacing + gateRowsStep
+	endY := gateY - gateRowsStep
 	leftWorld := g.playerX - float64(g.screenPX)
 	rightWorld := leftWorld + float64(g.width)
-	for y := startY; y <= endY; y += 2 {
-		if math.Abs(y-gateY) <= 2 {
+	for y := startY; y <= endY; y += gateRowsStep {
+		if math.Abs(y-gateY) <= gateNearBuffer {
 			continue
 		}
-		if y <= 12 {
+		if y <= treeSpawnMinRow {
 			continue
 		}
-		if g.rng.Float64() < 0.28 {
+		if g.rng.Float64() < treeSpawnChance {
 			x := leftWorld + g.rng.Float64()*maxFloat(0, rightWorld-leftWorld-float64(g.tree.W))
 			dist := math.Abs(x - g.playerX)
-			scale := 0.6 + minFloat(dist/14.0, 1.2)
+			scale := treeEdgeBiasBase + minFloat(dist/treeEdgeBiasScale, treeEdgeBiasMaxBoost)
 			if g.rng.Float64() < minFloat(scale, 1.0) {
 				g.obstacles = append(g.obstacles, Obstacle{X: x, Y: y, Kind: ObstacleTree, Sprite: g.tree})
 			}
 		}
-		if g.rng.Float64() < 0.16 {
+		if g.rng.Float64() < roughSpawnChance {
 			x := leftWorld + g.rng.Float64()*maxFloat(0, rightWorld-leftWorld-float64(g.rough.W))
 			g.obstacles = append(g.obstacles, Obstacle{X: x, Y: y, Kind: ObstacleRough, Sprite: g.rough})
 		}
@@ -429,13 +458,13 @@ func (g *SkiGame) checkObstacles() {
 			return
 		}
 		if obs.Kind == ObstacleRough {
-			g.speedPen = maxFloat(g.speedPen, 2.0)
+			g.speedPen = maxFloat(g.speedPen, roughSpeedPenalty)
 		}
 	}
 }
 
 func (g *SkiGame) trimWorld() {
-	minY := g.playerY - float64(g.height) - 10
+	minY := g.playerY - float64(g.height) - gateLookaheadPadding
 	filterGates := g.gates[:0]
 	for _, gate := range g.gates {
 		if gate.Y >= minY {
