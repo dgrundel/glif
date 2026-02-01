@@ -45,6 +45,7 @@ type SkiGame struct {
 
 	score    int
 	gameOver bool
+	gameOverReason string
 
 	playerX    float64
 	playerY    float64
@@ -97,6 +98,7 @@ func NewSkiGame() *SkiGame {
 			"quit":      "key:esc",
 			"quit_alt":  "key:ctrl+c",
 			"restart":   "key:enter",
+			"restart_alt": " ",
 		},
 		skiDown:   load("ski_down"),
 		skiLeft:   load("ski_left"),
@@ -118,6 +120,7 @@ func NewSkiGame() *SkiGame {
 func (g *SkiGame) reset() {
 	g.score = 0
 	g.gameOver = false
+	g.gameOverReason = ""
 	g.playerX = 0
 	g.playerY = 0
 	g.speed = 6.0
@@ -135,7 +138,7 @@ func (g *SkiGame) Update(dt float64) {
 		return
 	}
 	if g.gameOver {
-		if g.pressed("restart") {
+		if g.pressed("restart") || g.pressed("restart_alt") {
 			g.reset()
 		}
 		return
@@ -156,7 +159,7 @@ func (g *SkiGame) Update(dt float64) {
 	distance := g.playerY
 	g.targetSpd = 6.0 + math.Min(6.0, distance/120.0)
 	if g.speed < g.targetSpd {
-		g.speed += 1.5 * dt
+		g.speed += 2.5 * dt
 		if g.speed > g.targetSpd {
 			g.speed = g.targetSpd
 		}
@@ -220,7 +223,10 @@ func (g *SkiGame) Draw(r *render.Renderer) {
 	r.DrawText(r.Frame.W-len(scoreText)-2, 0, scoreText, g.uiStyle)
 
 	if g.gameOver {
-		msg := "Missed gate or hit a tree. Press Enter to restart."
+		msg := "Press Enter or Space to restart."
+		if g.gameOverReason != "" {
+			msg = fmt.Sprintf("%s. Press Enter or Space to restart.", g.gameOverReason)
+		}
 		x := max(0, (r.Frame.W-len(msg))/2)
 		y := max(0, g.screenPY-2)
 		r.DrawText(x, y, msg, g.uiStyle)
@@ -283,9 +289,9 @@ func (g *SkiGame) generateWorld() {
 }
 
 func (g *SkiGame) gateSpacing() float64 {
-	spacing := 12.0 - g.playerY/80.0
-	if spacing < 4.0 {
-		spacing = 4.0
+	spacing := 16.0 - g.playerY/100.0
+	if spacing < 8.0 {
+		spacing = 8.0
 	}
 	return spacing
 }
@@ -307,6 +313,9 @@ func (g *SkiGame) spawnObstacles(gateY, spacing, center float64) {
 	startY := gateY - spacing + 2
 	endY := gateY - 2
 	for y := startY; y <= endY; y += 2 {
+		if math.Abs(y-gateY) <= 2 {
+			continue
+		}
 		if g.rng.Float64() < 0.12 {
 			x := center + (g.rng.Float64()*2-1)*12.0
 			g.obstacles = append(g.obstacles, Obstacle{X: x, Y: y, Kind: ObstacleTree, Sprite: g.tree})
@@ -334,6 +343,7 @@ func (g *SkiGame) checkGates() {
 			gate.Passed = true
 		} else {
 			g.gameOver = true
+			g.gameOverReason = "Missed gate"
 			return
 		}
 	}
@@ -363,6 +373,7 @@ func (g *SkiGame) checkObstacles() {
 		obs.Hit = true
 		if obs.Kind == ObstacleTree {
 			g.gameOver = true
+			g.gameOverReason = "Hit a tree"
 			return
 		}
 		if obs.Kind == ObstacleRough {
