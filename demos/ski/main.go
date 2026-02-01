@@ -328,17 +328,24 @@ func (g *SkiGame) spawnObstacles(gateY, spacing, center float64) {
 }
 
 func (g *SkiGame) checkGates() {
-	playerCenter := g.playerX + float64(g.playerSpr.W)/2.0
 	for i := range g.gates {
 		gate := &g.gates[i]
 		if gate.Passed {
 			continue
 		}
-		if g.playerY <= gate.Y+float64(g.flagLeft.H) {
+		gateBottom := gate.Y + float64(g.flagLeft.H) - 1
+		playerBottom := g.playerY + float64(g.playerSpr.H) - 1
+		rows := max(2, g.playerSpr.H/2)
+		bandTop := playerBottom - float64(rows-1)
+		if playerBottom < gateBottom || bandTop > gateBottom {
 			continue
 		}
-		inside := playerCenter > gate.LeftX+float64(g.flagLeft.W) && playerCenter < gate.RightX
-		if inside {
+		spanLeft := gate.LeftX
+		spanRight := gate.RightX + float64(g.flagRight.W) - 1
+		playerLeft := g.playerX
+		playerRight := g.playerX + float64(g.playerSpr.W) - 1
+		overlap := playerRight >= spanLeft && playerLeft <= spanRight
+		if overlap {
 			g.score++
 			gate.Passed = true
 		} else {
