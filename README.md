@@ -131,3 +131,11 @@ Generate a mask from a sprite:
 ```
 go run ./utils/genmask path/to/sprite.sprite
 ```
+
+## Sprite preview
+
+Preview one or more masked sprites in a grid with filenames and scroll using the arrow keys:
+
+```
+go run ./utils/spritepreview path/to/sprite1 path/to/sprite2
+```
