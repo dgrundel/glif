@@ -50,6 +50,8 @@ func NewSpritePreview(items []PreviewItem) *SpritePreview {
 		binds: input.ActionMap{
 			"pan_up":   "key:up",
 			"pan_down": "key:down",
+			"pan_up_w": "w",
+			"pan_dn_s": "s",
 			"quit":     "key:esc",
 			"quit_alt": "key:ctrl+c",
 		},
@@ -74,16 +76,16 @@ func (p *SpritePreview) Update(dt float64) {
 
 	const panSpeed = 20.0
 	delta := 0.0
-	if p.pressed("pan_up") {
+	if p.pressed("pan_up") || p.pressed("pan_up_w") {
 		delta -= 1
 	}
-	if p.pressed("pan_down") {
+	if p.pressed("pan_down") || p.pressed("pan_dn_s") {
 		delta += 1
 	}
-	if p.held("pan_up") {
+	if p.held("pan_up") || p.held("pan_up_w") {
 		delta -= panSpeed * dt
 	}
-	if p.held("pan_down") {
+	if p.held("pan_down") || p.held("pan_dn_s") {
 		delta += panSpeed * dt
 	}
 	if delta == 0 {
