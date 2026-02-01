@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -200,28 +201,60 @@ func max(a, b int) int {
 	return b
 }
 
+func loadItem(base, label string) PreviewItem {
+	basePath := base
+	if strings.HasSuffix(basePath, ".sprite") {
+		basePath = strings.TrimSuffix(basePath, ".sprite")
+	}
+	sprite, err := assets.LoadMaskedSprite(basePath)
+	if err != nil {
+		log.Fatalf("load sprite %s: %v", base, err)
+	}
+	name := filepath.Base(label)
+	return PreviewItem{
+		Name:       name,
+		LabelWidth: utf8.RuneCountInString(name),
+		Sprite:     sprite,
+	}
+}
+
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: spritepreview path/to/sprite [more sprites...]")
+		fmt.Fprintln(os.Stderr, "usage: spritepreview path/to/sprite_or_folder [more sprites_or_folders...]")
 		os.Exit(2)
 	}
 
 	items := make([]PreviewItem, 0, len(os.Args)-1)
 	for _, arg := range os.Args[1:] {
-		base := arg
-		if strings.HasSuffix(base, ".sprite") {
-			base = strings.TrimSuffix(base, ".sprite")
+		info, err := os.Stat(arg)
+		if err == nil && info.IsDir() {
+			entries, err := os.ReadDir(arg)
+			if err != nil {
+				log.Fatalf("read dir %s: %v", arg, err)
+			}
+			names := make([]string, 0, len(entries))
+			for _, entry := range entries {
+				if entry.IsDir() {
+					continue
+				}
+				name := entry.Name()
+				if strings.HasSuffix(name, ".sprite") {
+					names = append(names, name)
+				}
+			}
+			sort.Strings(names)
+			for _, name := range names {
+				base := filepath.Join(arg, strings.TrimSuffix(name, ".sprite"))
+				items = append(items, loadItem(base, name))
+			}
+			continue
 		}
-		sprite, err := assets.LoadMaskedSprite(base)
-		if err != nil {
-			log.Fatalf("load sprite %s: %v", arg, err)
-		}
-		name := filepath.Base(arg)
-		items = append(items, PreviewItem{
-			Name:       name,
-			LabelWidth: utf8.RuneCountInString(name),
-			Sprite:     sprite,
-		})
+		items = append(items, loadItem(arg, filepath.Base(arg)))
+	}
+
+	if len(items) == 0 {
+		fmt.Fprintln(os.Stderr, "no sprites found in provided inputs")
+		os.Exit(2)
 	}
 
 	game := NewSpritePreview(items)
