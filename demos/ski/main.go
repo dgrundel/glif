@@ -110,8 +110,8 @@ func NewSkiGame() *SkiGame {
 		tree:      load("trees"),
 		rough:     load("snow_rough"),
 		uiStyle:   uiStyle,
-		speed:     6.0,
-		targetSpd: 6.0,
+		speed:     8.4,
+		targetSpd: 8.4,
 		rng:       rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 	g.playerSpr = g.skiDown
@@ -125,8 +125,8 @@ func (g *SkiGame) reset() {
 	g.gameOverReason = ""
 	g.playerX = 0
 	g.playerY = 0
-	g.speed = 6.0
-	g.targetSpd = 6.0
+	g.speed = 8.4
+	g.targetSpd = 8.4
 	g.speedPen = 0
 	g.nextGateY = 0
 	g.lastGateCX = g.playerX
@@ -166,7 +166,7 @@ func (g *SkiGame) Update(dt float64) {
 	}
 
 	distance := g.playerY
-	g.targetSpd = 6.0 + math.Min(6.0, distance/120.0)
+	g.targetSpd = 8.4 + math.Min(7.0, distance/120.0)
 	if g.speed < g.targetSpd {
 		g.speed += 2.5 * dt
 		if g.speed > g.targetSpd {
@@ -348,16 +348,25 @@ func (g *SkiGame) gatePositions(center float64) (float64, float64) {
 func (g *SkiGame) spawnObstacles(gateY, spacing, center float64) {
 	startY := gateY - spacing + 2
 	endY := gateY - 2
+	leftWorld := g.playerX - float64(g.screenPX)
+	rightWorld := leftWorld + float64(g.width)
 	for y := startY; y <= endY; y += 2 {
 		if math.Abs(y-gateY) <= 2 {
 			continue
 		}
-		if g.rng.Float64() < 0.12 {
-			x := center + (g.rng.Float64()*2-1)*12.0
-			g.obstacles = append(g.obstacles, Obstacle{X: x, Y: y, Kind: ObstacleTree, Sprite: g.tree})
+		if y <= 12 {
+			continue
 		}
-		if g.rng.Float64() < 0.08 {
-			x := center + (g.rng.Float64()*2-1)*10.0
+		if g.rng.Float64() < 0.28 {
+			x := leftWorld + g.rng.Float64()*maxFloat(0, rightWorld-leftWorld-float64(g.tree.W))
+			dist := math.Abs(x - g.playerX)
+			scale := 0.6 + minFloat(dist/14.0, 1.2)
+			if g.rng.Float64() < minFloat(scale, 1.0) {
+				g.obstacles = append(g.obstacles, Obstacle{X: x, Y: y, Kind: ObstacleTree, Sprite: g.tree})
+			}
+		}
+		if g.rng.Float64() < 0.16 {
+			x := leftWorld + g.rng.Float64()*maxFloat(0, rightWorld-leftWorld-float64(g.rough.W))
 			g.obstacles = append(g.obstacles, Obstacle{X: x, Y: y, Kind: ObstacleRough, Sprite: g.rough})
 		}
 	}
@@ -464,6 +473,13 @@ func max(a, b int) int {
 
 func maxFloat(a, b float64) float64 {
 	if a > b {
+		return a
+	}
+	return b
+}
+
+func minFloat(a, b float64) float64 {
+	if a < b {
 		return a
 	}
 	return b
