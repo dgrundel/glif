@@ -146,12 +146,18 @@ func (g *SkiGame) Update(dt float64) {
 
 	left := g.held("left") || g.held("left_alt")
 	right := g.held("right") || g.held("right_alt")
+	moveSpd := g.speed - g.speedPen
+	if moveSpd < 0 {
+		moveSpd = 0
+	}
+
+	strafe := maxFloat(16.0, moveSpd*0.9)
 	if left && !right {
 		g.playerSpr = g.skiLeft
-		g.playerX -= 16.0 * dt
+		g.playerX -= strafe * dt
 	} else if right && !left {
 		g.playerSpr = g.skiRight
-		g.playerX += 16.0 * dt
+		g.playerX += strafe * dt
 	} else {
 		g.playerSpr = g.skiDown
 	}
@@ -174,10 +180,6 @@ func (g *SkiGame) Update(dt float64) {
 		if g.speedPen < 0 {
 			g.speedPen = 0
 		}
-	}
-	moveSpd := g.speed - g.speedPen
-	if moveSpd < 0 {
-		moveSpd = 0
 	}
 	g.playerY += moveSpd * dt
 
