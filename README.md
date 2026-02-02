@@ -31,8 +31,10 @@ Masked sprites use three files with a shared base name:
 - `<name>.sprite`
 - `<name>.mask`
 - `<name>.palette` (optional)
+- `<name>.collision` (optional)
 
 If `<name>.palette` is missing, `default.palette` in the same folder is used.
+If `<name>.collision` is missing, the sprite has no collision mask. Any non-space character in `.collision` is treated as collidable.
 
 Load with:
 
@@ -64,6 +66,12 @@ www
 w #ffffff #0000ff
 g #ffd700 #0000ff
 . reset reset transparent
+```
+
+`duck.collision`:
+```
+xxx
+ xx
 ```
 
 ## UI palettes

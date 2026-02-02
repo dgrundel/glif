@@ -7,6 +7,7 @@ type Sprite struct {
 	H           int
 	Cells       []grid.Cell
 	Transparent rune
+	Collision   *CollisionMask
 }
 
 func (s *Sprite) cellAt(x, y int) grid.Cell {

@@ -35,6 +35,11 @@ func LoadMaskedSprite(basePath string) (*render.Sprite, error) {
 		return nil, err
 	}
 
+	collisionMask, err := loadCollisionMask(basePath, sw, sh)
+	if err != nil {
+		return nil, err
+	}
+
 	cells := make([]grid.Cell, sw*sh)
 	for y := 0; y < sh; y++ {
 		for x := 0; x < sw; x++ {
@@ -58,7 +63,7 @@ func LoadMaskedSprite(basePath string) (*render.Sprite, error) {
 		}
 	}
 
-	return &render.Sprite{W: sw, H: sh, Cells: cells}, nil
+	return &render.Sprite{W: sw, H: sh, Cells: cells, Collision: collisionMask}, nil
 }
 
 func resolvePalettePath(basePath string) string {
@@ -110,4 +115,29 @@ func runeAt(line []rune, x int) rune {
 		return ' '
 	}
 	return line[x]
+}
+
+func loadCollisionMask(basePath string, sw, sh int) (*render.CollisionMask, error) {
+	path := basePath + ".collision"
+	if !fileExists(path) {
+		return nil, nil
+	}
+	linesRaw, err := readLines(path)
+	if err != nil {
+		return nil, err
+	}
+	lines := toRunesLines(linesRaw)
+	cw, ch := dims(lines)
+	if cw != sw || ch != sh {
+		return nil, fmt.Errorf("sprite and collision sizes differ: sprite=%dx%d collision=%dx%d", sw, sh, cw, ch)
+	}
+	cells := make([]bool, sw*sh)
+	for y := 0; y < sh; y++ {
+		for x := 0; x < sw; x++ {
+			if runeAt(lines[y], x) != ' ' {
+				cells[y*sw+x] = true
+			}
+		}
+	}
+	return &render.CollisionMask{W: sw, H: sh, Cells: cells}, nil
 }
