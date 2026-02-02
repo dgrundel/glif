@@ -563,6 +563,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	eng.ShowFPS = true
 	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: grid.Style{Fg: tcell.ColorReset, Bg: tcell.ColorWhite}}
 	eng.Frame.ClearAll()
 	if err := eng.Run(game); err != nil {
