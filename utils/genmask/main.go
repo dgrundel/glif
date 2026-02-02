@@ -10,19 +10,26 @@ import (
 
 func main() {
 	var (
-		outPath     string
 		fill        string
 		transparent string
 		mappings    mapSpec
+		writeColor  bool
+		writeColl   bool
 	)
-	flag.StringVar(&outPath, "out", "", "output .color path (defaults to same base name)")
 	flag.StringVar(&fill, "fill", "x", "color rune for non-space cells")
 	flag.StringVar(&transparent, "transparent", ".", "color rune for spaces")
 	flag.Var(&mappings, "map", "character mapping (repeatable, e.g. --map a=b)")
 	flag.Var(&mappings, "m", "character mapping (shorthand for --map)")
+	flag.BoolVar(&writeColor, "color", false, "write .color output")
+	flag.BoolVar(&writeColl, "collision", false, "write .collision output")
 	flag.Parse()
 
 	if flag.NArg() != 1 {
+		flag.Usage()
+		os.Exit(2)
+	}
+	if !writeColor && !writeColl {
+		fmt.Fprintln(os.Stderr, "must provide --color and/or --collision")
 		flag.Usage()
 		os.Exit(2)
 	}
@@ -76,18 +83,24 @@ func main() {
 		maskLines = append(maskLines, b.String())
 	}
 
-	if outPath == "" {
-		base := strings.TrimSuffix(spritePath, filepath.Ext(spritePath))
-		outPath = base + ".color"
-	}
-
 	out := strings.Join(maskLines, "\n")
 	if len(lines) > 0 {
 		out += "\n"
 	}
-	if err := os.WriteFile(outPath, []byte(out), 0o644); err != nil {
-		fmt.Fprintf(os.Stderr, "write color: %v\n", err)
-		os.Exit(1)
+	base := strings.TrimSuffix(spritePath, filepath.Ext(spritePath))
+	if writeColor {
+		outPath := base + ".color"
+		if err := os.WriteFile(outPath, []byte(out), 0o644); err != nil {
+			fmt.Fprintf(os.Stderr, "write color: %v\n", err)
+			os.Exit(1)
+		}
+	}
+	if writeColl {
+		outPath := base + ".collision"
+		if err := os.WriteFile(outPath, []byte(out), 0o644); err != nil {
+			fmt.Fprintf(os.Stderr, "write collision: %v\n", err)
+			os.Exit(1)
+		}
 	}
 }
 

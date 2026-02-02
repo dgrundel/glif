@@ -134,10 +134,12 @@ Sprite names in `.tiles` are base paths (same as `assets.LoadMaskedSprite`).
 
 ## Mask generator
 
-Generate a color mask from a sprite:
+Generate a color mask or collision mask from a sprite:
 
 ```
-go run ./utils/genmask path/to/sprite.sprite
+go run ./utils/genmask --color path/to/sprite.sprite
+go run ./utils/genmask --collision path/to/sprite.sprite
+go run ./utils/genmask --color --collision path/to/sprite.sprite
 ```
 
 ## Sprite preview
