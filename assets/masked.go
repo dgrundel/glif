@@ -16,7 +16,7 @@ func LoadMaskedSprite(basePath string) (*render.Sprite, error) {
 	if err != nil {
 		return nil, err
 	}
-	maskLinesRaw, err := readLines(basePath + ".mask")
+	maskLinesRaw, err := readLines(basePath + ".color")
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func LoadMaskedSprite(basePath string) (*render.Sprite, error) {
 	sw, sh := dims(spriteLines)
 	mw, mh := dims(maskLines)
 	if sw != mw || sh != mh {
-		return nil, fmt.Errorf("sprite and mask sizes differ: sprite=%dx%d mask=%dx%d", sw, sh, mw, mh)
+		return nil, fmt.Errorf("sprite and color sizes differ: sprite=%dx%d color=%dx%d", sw, sh, mw, mh)
 	}
 
 	pal, err := palette.Load(resolvePalettePath(basePath))

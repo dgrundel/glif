@@ -15,15 +15,15 @@ func main() {
 		transparent string
 		mappings    mapSpec
 	)
-	flag.StringVar(&outPath, "out", "", "output .mask path (defaults to same base name)")
-	flag.StringVar(&fill, "fill", "x", "mask rune for non-space cells")
-	flag.StringVar(&transparent, "transparent", ".", "mask rune for spaces")
+	flag.StringVar(&outPath, "out", "", "output .color path (defaults to same base name)")
+	flag.StringVar(&fill, "fill", "x", "color rune for non-space cells")
+	flag.StringVar(&transparent, "transparent", ".", "color rune for spaces")
 	flag.Var(&mappings, "map", "character mapping (repeatable, e.g. --map a=b)")
 	flag.Var(&mappings, "m", "character mapping (shorthand for --map)")
 	flag.Parse()
 
 	if flag.NArg() != 1 {
-		fmt.Fprintln(os.Stderr, "usage: genmask [--out path] [--fill x] [--transparent .] [--map a=b] path/to/sprite.sprite")
+		flag.Usage()
 		os.Exit(2)
 	}
 	if len(fill) != 1 || len(transparent) != 1 {
@@ -78,7 +78,7 @@ func main() {
 
 	if outPath == "" {
 		base := strings.TrimSuffix(spritePath, filepath.Ext(spritePath))
-		outPath = base + ".mask"
+		outPath = base + ".color"
 	}
 
 	out := strings.Join(maskLines, "\n")
@@ -86,7 +86,7 @@ func main() {
 		out += "\n"
 	}
 	if err := os.WriteFile(outPath, []byte(out), 0o644); err != nil {
-		fmt.Fprintf(os.Stderr, "write mask: %v\n", err)
+		fmt.Fprintf(os.Stderr, "write color: %v\n", err)
 		os.Exit(1)
 	}
 }

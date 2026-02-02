@@ -175,7 +175,7 @@ The camera + render pipeline stays unchanged.
 
 Masked sprites are loaded by base path:
 - `duck.sprite`
-- `duck.mask`
+- `duck.color`
 - `duck.palette` (optional)
 
 If `<name>.palette` is missing, `default.palette` in the same folder is used.

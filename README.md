@@ -14,7 +14,7 @@
 - `demos/duck`: demo scene
 - `demos/wasd`: demo with keyboard movement
 - `demos/world`: demo with camera panning and tilemap background
-- `utils/genmask`: sprite mask generator
+- `utils/genmask`: sprite color mask generator
 
 ## Demo
 
@@ -29,7 +29,7 @@ go run ./demos/duck
 Masked sprites use three files with a shared base name:
 
 - `<name>.sprite`
-- `<name>.mask`
+- `<name>.color`
 - `<name>.palette` (optional)
 - `<name>.collision` (optional)
 
@@ -54,7 +54,7 @@ Example:
 (_>
 ```
 
-`duck.mask`:
+`duck.color`:
 ```
 gww
 www
@@ -134,7 +134,7 @@ Sprite names in `.tiles` are base paths (same as `assets.LoadMaskedSprite`).
 
 ## Mask generator
 
-Generate a mask from a sprite:
+Generate a color mask from a sprite:
 
 ```
 go run ./utils/genmask path/to/sprite.sprite
