@@ -1,27 +1,18 @@
 # glif
 2d terminal game engine
 
-## Structure
-
-- `engine`: main loop, timing, event dispatch
-- `term`: terminal backend + framebuffer diffing (tcell)
-- `grid`: core types (`Vec2i`, `Cell`, `Frame`)
-- `render`: draw helpers and sprite support
-- `assets`: sprite loaders (masked sprites + palettes)
-- `palette`: shared palette loader for UI + sprites
-- `ecs`: lightweight component/system world + z-ordered sprite rendering
-- `input`: generic key-state tracking (held/pressed) with TTL
-- `demos/duck`: demo scene
-- `demos/wasd`: demo with keyboard movement
-- `demos/world`: demo with camera panning and tilemap background
-- `utils/genmask`: sprite color mask generator
-
 ## Demo
 
-Run the duck demo:
+Run the ski demo:
 
 ```
-go run ./demos/duck
+go run ./demos/ski
+```
+
+Run the blackjack demo:
+
+```
+go run ./demos/blackjack
 ```
 
 ## Sprite assets
@@ -48,31 +39,42 @@ Palette colors support:
 
 Example:
 
-`duck.sprite`:
+`penguin.sprite`:
 ```
->o)
-(_>
-```
-
-`duck.color`:
-```
-gww
-www
+ __
+( o>
+///\
+\V_/_
 ```
 
-`duck.palette`:
+`penguin.color`:
+```
+.xx..
+xxwg.
+xxxw.
+xxxwg
+```
+
+`penguin.palette`:
 ```
 // key fg bg [bold] [transparent]
-w #ffffff #0000ff
-g #ffd700 #0000ff
-. reset reset transparent
+x #000000  #4576f2
+g gold #4576f2
+y #aaaaaa #4576f2
+w #ffffff #4576f2
 ```
 
-`duck.collision`:
+`penguin.collision`:
 ```
-xxx
- xx
+.xx..
+xxxx.
+xxxx.
+xxxxx
 ```
+
+Here's the result as rendered by the preview util:
+
+![Rendered penguin sprite](demos/penguin/penguin-preview.png)
 
 ## UI palettes
 
