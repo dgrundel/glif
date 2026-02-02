@@ -82,6 +82,7 @@ type SkiGame struct {
 	skiDown    *render.Sprite
 	skiLeft    *render.Sprite
 	skiRight   *render.Sprite
+	splash     *render.Sprite
 	flagLeft   *render.Sprite
 	flagRight  *render.Sprite
 	tree       *render.Sprite
@@ -98,6 +99,7 @@ type SkiGame struct {
 	lastGateCX float64
 	leftTTL    float64
 	rightTTL   float64
+	showSplash bool
 	gates      []Gate
 	obstacles  []Obstacle
 	rng        *rand.Rand
@@ -134,6 +136,7 @@ func NewSkiGame() *SkiGame {
 		skiDown:   load("ski_down"),
 		skiLeft:   load("ski_left"),
 		skiRight:  load("ski_right"),
+		splash:    load("splash"),
 		flagLeft:  load("flag_left"),
 		flagRight: load("flag_right"),
 		tree:      load("trees"),
@@ -144,6 +147,7 @@ func NewSkiGame() *SkiGame {
 		rng:       rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 	g.playerSpr = g.skiDown
+	g.showSplash = true
 	g.reset()
 	return g
 }
@@ -171,6 +175,12 @@ func (g *SkiGame) Update(dt float64) {
 	if g.gameOver {
 		if g.pressed("restart") || g.pressed("restart_alt") {
 			g.reset()
+		}
+		return
+	}
+	if g.showSplash {
+		if g.pressed("restart") || g.pressed("restart_alt") {
+			g.showSplash = false
 		}
 		return
 	}
@@ -222,6 +232,10 @@ func (g *SkiGame) Update(dt float64) {
 }
 
 func (g *SkiGame) Draw(r *render.Renderer) {
+	if g.showSplash {
+		g.drawSplash(r)
+		return
+	}
 	cameraX := g.playerX - float64(g.screenPX)
 	cameraY := g.playerY - float64(g.screenPY)
 
@@ -265,6 +279,18 @@ func (g *SkiGame) Draw(r *render.Renderer) {
 		y := max(0, g.screenPY-screenMessageOffsetY)
 		r.DrawText(x, y, msg, g.uiStyle)
 	}
+}
+
+func (g *SkiGame) drawSplash(r *render.Renderer) {
+	if g.splash == nil {
+		return
+	}
+	startY := max(1, (r.Frame.H-g.splash.H)/2-1)
+	startX := max(0, (r.Frame.W-g.splash.W)/2)
+	r.DrawSprite(startX, startY, g.splash)
+	prompt := "Press enter or space to play"
+	promptX := max(0, (r.Frame.W-len(prompt))/2)
+	r.DrawText(promptX, startY+g.splash.H+1, prompt, g.uiStyle)
 }
 
 func (g *SkiGame) Resize(w, h int) {
