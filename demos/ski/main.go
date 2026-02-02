@@ -21,6 +21,7 @@ type ObstacleKind int
 const (
 	ObstacleTree ObstacleKind = iota
 	ObstacleRough
+	ObstacleSnow
 )
 
 const (
@@ -44,6 +45,7 @@ const (
 	gateLookaheadPadding     = 10.0
 	treeSpawnChance          = 0.38
 	roughSpawnChance         = 0.16
+	snowSpawnChance          = 0.45
 	treeSpawnMinRow          = 12.0
 	treeEdgeBiasBase         = 0.6
 	treeEdgeBiasScale        = 14.0
@@ -87,6 +89,7 @@ type SkiGame struct {
 	flagRight  *render.Sprite
 	tree       *render.Sprite
 	rough      *render.Sprite
+	snow       *render.Sprite
 	uiStyle    grid.Style
 	alertStyle grid.Style
 	width      int
@@ -146,6 +149,7 @@ func NewSkiGame() *SkiGame {
 		flagRight:  load("flag_right"),
 		tree:       load("trees"),
 		rough:      load("snow_rough"),
+		snow:       load("snow"),
 		uiStyle:    uiStyle,
 		alertStyle: alertStyle,
 		speed:      initialSpeed,
@@ -419,10 +423,10 @@ func (g *SkiGame) spawnObstacles(gateY, spacing, center float64) {
 	rightWorld := leftWorld + float64(g.width)
 	for y := startY; y <= endY; y += gateRowsStep {
 		if math.Abs(y-gateY) <= gateNearBuffer {
-			continue
+			goto snowOnly
 		}
 		if y <= treeSpawnMinRow {
-			continue
+			goto snowOnly
 		}
 		if g.rng.Float64() < treeSpawnChance {
 			x := leftWorld + g.rng.Float64()*maxFloat(0, rightWorld-leftWorld-float64(g.tree.W))
@@ -435,6 +439,11 @@ func (g *SkiGame) spawnObstacles(gateY, spacing, center float64) {
 		if g.rng.Float64() < roughSpawnChance {
 			x := leftWorld + g.rng.Float64()*maxFloat(0, rightWorld-leftWorld-float64(g.rough.W))
 			g.obstacles = append(g.obstacles, Obstacle{X: x, Y: y, Kind: ObstacleRough, Sprite: g.rough})
+		}
+	snowOnly:
+		if g.rng.Float64() < snowSpawnChance {
+			x := leftWorld + g.rng.Float64()*maxFloat(0, rightWorld-leftWorld-float64(g.snow.W))
+			g.obstacles = append(g.obstacles, Obstacle{X: x, Y: y, Kind: ObstacleSnow, Sprite: g.snow})
 		}
 	}
 }
@@ -497,6 +506,9 @@ func (g *SkiGame) checkObstacles() {
 		}
 		if obs.Kind == ObstacleRough {
 			g.speedPen = maxFloat(g.speedPen, roughSpeedPenalty)
+		}
+		if obs.Kind == ObstacleSnow {
+			continue
 		}
 	}
 }
