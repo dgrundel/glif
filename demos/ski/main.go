@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dgrundel/glif/assets"
+	"github.com/dgrundel/glif/collision"
 	"github.com/dgrundel/glif/engine"
 	"github.com/dgrundel/glif/grid"
 	"github.com/dgrundel/glif/input"
@@ -478,24 +479,16 @@ func (g *SkiGame) checkGates() {
 }
 
 func (g *SkiGame) checkObstacles() {
-	playerRect := rect{
-		x: g.playerX,
-		y: g.playerY,
-		w: float64(g.playerSpr.W),
-		h: float64(g.playerSpr.H),
-	}
+	playerX := int(math.Round(g.playerX))
+	playerY := int(math.Round(g.playerY))
 	for i := range g.obstacles {
 		obs := &g.obstacles[i]
 		if obs.Hit {
 			continue
 		}
-		obsRect := rect{
-			x: obs.X,
-			y: obs.Y,
-			w: float64(obs.Sprite.W),
-			h: float64(obs.Sprite.H),
-		}
-		if !playerRect.overlaps(obsRect) {
+		obsX := int(math.Round(obs.X))
+		obsY := int(math.Round(obs.Y))
+		if !collision.Overlaps(playerX, playerY, g.playerSpr, obsX, obsY, obs.Sprite) {
 			continue
 		}
 		if obs.Kind == ObstacleTree {
@@ -504,6 +497,7 @@ func (g *SkiGame) checkObstacles() {
 			return
 		}
 		if obs.Kind == ObstacleRough {
+			obs.Hit = true
 			g.speedPen = maxFloat(g.speedPen, roughSpeedPenalty)
 		}
 		if obs.Kind == ObstacleSnow {
