@@ -30,8 +30,9 @@ func Load(path string) (*Palette, error) {
 	lines := strings.Split(text, "\n")
 	entries := map[rune]Entry{}
 	for i, line := range lines {
+		line = stripComment(line)
 		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
+		if line == "" || strings.HasPrefix(line, "//") {
 			continue
 		}
 		fields := strings.Fields(line)
@@ -147,6 +148,13 @@ func parseHexColor(s string) (uint8, uint8, uint8, bool) {
 		return r1<<4 | r2, g1<<4 | g2, b1<<4 | b2, true
 	}
 	return 0, 0, 0, false
+}
+
+func stripComment(line string) string {
+	if idx := strings.Index(line, "//"); idx >= 0 {
+		return line[:idx]
+	}
+	return line
 }
 
 func hexNibble(c byte) (uint8, bool) {

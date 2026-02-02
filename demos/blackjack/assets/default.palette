@@ -1,4 +1,4 @@
-# key fg bg [bold] [transparent]
+//key fg bg [bold] [transparent]
 w #ffffff #2ba93d
 y #ff0000 #2ba93d
 z #000000 #2ba93d

@@ -62,7 +62,7 @@ www
 
 `duck.palette`:
 ```
-# key fg bg [bold] [transparent]
+// key fg bg [bold] [transparent]
 w #ffffff #0000ff
 g #ffd700 #0000ff
 . reset reset transparent
