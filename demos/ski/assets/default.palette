@@ -1,8 +1,8 @@
-x #000000 #ffffff
-y #aaaaaa #ffffff
-r #ff0000 #ffffff
-e #ffffff #ff0000 
-b #0000ff #ffffff
-o #8b5a2b #ffffff
-g #2e8b57 #ffffff
+x #000000 #ffffff // default
+y #aaaaaa #ffffff // gray fg (decorative snow)
+r #ff0000 #ffffff // red fg (gate flag)
+e #ffffff #ff0000 // alert style
+b #0000ff #ffffff // blue fg (skier body)
+o #8b5a2b #ffffff // brown fg (tree trunk)
+g #2e8b57 #ffffff // green fg (tree top)
 . reset reset transparent
