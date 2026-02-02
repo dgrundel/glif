@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/dgrundel/glif/grid"
@@ -30,6 +31,13 @@ type Engine struct {
 	Frame    *grid.Frame
 	Tick     time.Duration
 	Input    *input.Manager
+	ShowFPS  bool
+
+	fpsWindow []float64
+	fpsIndex  int
+	fpsCount  int
+	fpsSum    float64
+	fpsValue  float64
 }
 
 func New(game Game, tick time.Duration) (*Engine, error) {
@@ -46,11 +54,12 @@ func New(game Game, tick time.Duration) (*Engine, error) {
 	}
 	game.Resize(w, h)
 	return &Engine{
-		Screen:   screen,
-		Renderer: r,
-		Frame:    frame,
-		Tick:     tick,
-		Input:    input.New(0.12),
+		Screen:    screen,
+		Renderer:  r,
+		Frame:     frame,
+		Tick:      tick,
+		Input:     input.New(0.12),
+		fpsWindow: make([]float64, 60),
 	}, nil
 }
 
@@ -106,6 +115,8 @@ func (e *Engine) Run(game Game) error {
 				accumulator = maxAccum
 			}
 
+			e.updateFPS(dt)
+
 			for accumulator >= step {
 				game.Update(step)
 				accumulator -= step
@@ -116,6 +127,7 @@ func (e *Engine) Run(game Game) error {
 
 			e.Renderer.Clear()
 			game.Draw(e.Renderer)
+			e.drawFPSOverlay()
 			e.Screen.Present(e.Renderer.Frame)
 		case ev := <-events:
 			switch ev := ev.(type) {
@@ -131,4 +143,36 @@ func (e *Engine) Run(game Game) error {
 			}
 		}
 	}
+}
+
+func (e *Engine) updateFPS(dt float64) {
+	if dt <= 0 {
+		return
+	}
+	if e.fpsCount < len(e.fpsWindow) {
+		e.fpsWindow[e.fpsIndex] = dt
+		e.fpsSum += dt
+		e.fpsCount++
+	} else {
+		e.fpsSum -= e.fpsWindow[e.fpsIndex]
+		e.fpsWindow[e.fpsIndex] = dt
+		e.fpsSum += dt
+	}
+	e.fpsIndex = (e.fpsIndex + 1) % len(e.fpsWindow)
+	if e.fpsSum > 0 {
+		e.fpsValue = float64(e.fpsCount) / e.fpsSum
+	}
+}
+
+func (e *Engine) drawFPSOverlay() {
+	if !e.ShowFPS {
+		return
+	}
+	style := e.Frame.Clear.Style
+	text := fmt.Sprintf("FPS: %.1f", e.fpsValue)
+	e.Renderer.DrawText(0, 0, text, style)
+}
+
+func (e *Engine) FPS() float64 {
+	return e.fpsValue
 }
