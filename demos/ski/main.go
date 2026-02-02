@@ -498,7 +498,6 @@ func (g *SkiGame) checkObstacles() {
 		if !playerRect.overlaps(obsRect) {
 			continue
 		}
-		obs.Hit = true
 		if obs.Kind == ObstacleTree {
 			g.gameOver = true
 			g.gameOverReason = "Hit a tree"
@@ -525,7 +524,7 @@ func (g *SkiGame) trimWorld() {
 
 	filterObs := g.obstacles[:0]
 	for _, obs := range g.obstacles {
-		if obs.Y >= minY && !obs.Hit {
+		if obs.Y >= minY {
 			filterObs = append(filterObs, obs)
 		}
 	}
