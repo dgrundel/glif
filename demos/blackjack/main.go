@@ -56,7 +56,7 @@ type Card struct {
 }
 
 func NewBlackjack() *Blackjack {
-	splash, err := assets.LoadMaskedSprite("demos/blackjack/assets/splash")
+	splash, err := assets.LoadSprite("demos/blackjack/assets/splash")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -399,7 +399,7 @@ func loadCardSprites() map[rune]*render.Sprite {
 }
 
 func loadSprite(base string) *render.Sprite {
-	sprite, err := assets.LoadMaskedSprite(filepath.Join("demos/blackjack/assets", base))
+	sprite, err := assets.LoadSprite(filepath.Join("demos/blackjack/assets", base))
 	if err != nil {
 		log.Fatal(err)
 	}

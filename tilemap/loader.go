@@ -95,7 +95,7 @@ func loadTileset(path string) (map[rune]int, map[int]*render.Sprite, int, int, e
 		if !filepath.IsAbs(base) {
 			base = filepath.Join(dir, base)
 		}
-		sprite, err := assets.LoadMaskedSprite(base)
+		sprite, err := assets.LoadSprite(base)
 		if err != nil {
 			return nil, nil, 1, 1, fmt.Errorf("load sprite %q: %w", name, err)
 		}

@@ -34,7 +34,7 @@ func NewGame() *Game {
 	}
 	world := ecs.NewWorld()
 
-	duck, err := assets.LoadMaskedSprite("demos/wasd/assets/duck")
+	duck, err := assets.LoadSprite("demos/wasd/assets/duck")
 	if err != nil {
 		log.Fatal(err)
 	}

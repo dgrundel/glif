@@ -31,11 +31,11 @@ func NewDemo() *Demo {
 	}
 	world := ecs.NewWorld()
 
-	duck, err := assets.LoadMaskedSprite("demos/duck/assets/duck")
+	duck, err := assets.LoadSprite("demos/duck/assets/duck")
 	if err != nil {
 		log.Fatal(err)
 	}
-	whale, err := assets.LoadMaskedSprite("demos/duck/assets/whale")
+	whale, err := assets.LoadSprite("demos/duck/assets/whale")
 	if err != nil {
 		log.Fatal(err)
 	}

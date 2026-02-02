@@ -38,7 +38,7 @@ func NewDemo() *Demo {
 	cam := &camera.Camera{}
 	world.Camera = cam
 
-	duck, err := assets.LoadMaskedSprite("demos/world/assets/duck")
+	duck, err := assets.LoadSprite("demos/world/assets/duck")
 	if err != nil {
 		log.Fatal(err)
 	}

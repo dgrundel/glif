@@ -111,7 +111,7 @@ type SkiGame struct {
 
 func NewSkiGame() *SkiGame {
 	load := func(name string) *render.Sprite {
-		sprite, err := assets.LoadMaskedSprite("demos/ski/assets/" + name)
+		sprite, err := assets.LoadSprite("demos/ski/assets/" + name)
 		if err != nil {
 			log.Fatal(err)
 		}

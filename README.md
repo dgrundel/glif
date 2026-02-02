@@ -39,7 +39,7 @@ If `<name>.collision` is missing, the sprite has no collision mask. Any non-spac
 Load with:
 
 ```
-assets.LoadMaskedSprite("path/to/name")
+assets.LoadSprite("path/to/name")
 ```
 
 Palette colors support:
@@ -130,7 +130,7 @@ Example `.map`:
 ~..~~..~
 ```
 
-Sprite names in `.tiles` are base paths (same as `assets.LoadMaskedSprite`).
+Sprite names in `.tiles` are base paths (same as `assets.LoadSprite`).
 
 ## Mask generator
 

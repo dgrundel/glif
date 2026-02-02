@@ -11,7 +11,7 @@ import (
 	"github.com/dgrundel/glif/render"
 )
 
-func LoadMaskedSprite(basePath string) (*render.Sprite, error) {
+func LoadSprite(basePath string) (*render.Sprite, error) {
 	spriteLinesRaw, err := readLines(basePath + ".sprite")
 	if err != nil {
 		return nil, err

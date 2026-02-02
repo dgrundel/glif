@@ -206,7 +206,7 @@ func loadItem(base, label string) PreviewItem {
 	if strings.HasSuffix(basePath, ".sprite") {
 		basePath = strings.TrimSuffix(basePath, ".sprite")
 	}
-	sprite, err := assets.LoadMaskedSprite(basePath)
+	sprite, err := assets.LoadSprite(basePath)
 	if err != nil {
 		log.Fatalf("load sprite %s: %v", base, err)
 	}
