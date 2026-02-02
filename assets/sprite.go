@@ -63,7 +63,7 @@ func LoadSprite(basePath string) (*render.Sprite, error) {
 		}
 	}
 
-	return &render.Sprite{W: sw, H: sh, Cells: cells, Collision: collisionMask}, nil
+	return &render.Sprite{W: sw, H: sh, Cells: cells, Collision: collisionMask, Source: basePath}, nil
 }
 
 func resolvePalettePath(basePath string) string {
