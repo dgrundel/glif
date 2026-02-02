@@ -50,7 +50,7 @@ func New(game Game, tick time.Duration) (*Engine, error) {
 	frame := grid.NewFrame(w, h, clear)
 	r := render.NewRenderer(frame)
 	if tick <= 0 {
-		tick = 33 * time.Millisecond
+		tick = 16 * time.Millisecond
 	}
 	game.Resize(w, h)
 	return &Engine{
