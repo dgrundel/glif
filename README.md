@@ -1,19 +1,23 @@
 # glif
 2d terminal game engine
 
-## Demo
+## Demos
 
-Run the ski demo:
+### Ski Demo
 
 ```
 go run ./demos/ski
 ```
 
-Run the blackjack demo:
+![Screenshot of gameplay](demos/ski/screenshot.png)
+
+### Blackjack Demo
 
 ```
 go run ./demos/blackjack
 ```
+
+![Screenshot of gameplay](demos/blackjack/gameplay-screenshot.png)
 
 ## Sprite assets
 
@@ -76,7 +80,7 @@ Here's the result as rendered by the preview util:
 
 ![Rendered penguin sprite](demos/penguin/penguin-preview.png)
 
-## UI palettes
+## Color palettes
 
 Load a palette and fetch styles by key:
 
