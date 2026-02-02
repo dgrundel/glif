@@ -13,14 +13,17 @@ func main() {
 		outPath     string
 		fill        string
 		transparent string
+		mappings    mapSpec
 	)
 	flag.StringVar(&outPath, "out", "", "output .mask path (defaults to same base name)")
 	flag.StringVar(&fill, "fill", "x", "mask rune for non-space cells")
 	flag.StringVar(&transparent, "transparent", ".", "mask rune for spaces")
+	flag.Var(&mappings, "map", "character mapping (repeatable, e.g. --map a=b)")
+	flag.Var(&mappings, "m", "character mapping (shorthand for --map)")
 	flag.Parse()
 
 	if flag.NArg() != 1 {
-		fmt.Fprintln(os.Stderr, "usage: genmask [--out path] [--fill x] [--transparent .] path/to/sprite.sprite")
+		fmt.Fprintln(os.Stderr, "usage: genmask [--out path] [--fill x] [--transparent .] [--map a=b] path/to/sprite.sprite")
 		os.Exit(2)
 	}
 	if len(fill) != 1 || len(transparent) != 1 {
@@ -62,9 +65,13 @@ func main() {
 			}
 			if ch == ' ' {
 				b.WriteByte(transCh)
-			} else {
-				b.WriteByte(fillCh)
+				continue
 			}
+			if mapped, ok := mappings[ch]; ok {
+				b.WriteRune(mapped)
+				continue
+			}
+			b.WriteByte(fillCh)
 		}
 		maskLines = append(maskLines, b.String())
 	}
@@ -82,4 +89,38 @@ func main() {
 		fmt.Fprintf(os.Stderr, "write mask: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+type mapSpec map[rune]rune
+
+func (m *mapSpec) String() string {
+	if m == nil {
+		return ""
+	}
+	parts := make([]string, 0, len(*m))
+	for k, v := range *m {
+		parts = append(parts, fmt.Sprintf("%c=%c", k, v))
+	}
+	return strings.Join(parts, ",")
+}
+
+func (m *mapSpec) Set(value string) error {
+	if *m == nil {
+		*m = map[rune]rune{}
+	}
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fmt.Errorf("map entry is empty")
+	}
+	parts := strings.Split(value, "=")
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid map entry %q (expected a=b)", value)
+	}
+	left := []rune(strings.TrimSpace(parts[0]))
+	right := []rune(strings.TrimSpace(parts[1]))
+	if len(left) != 1 || len(right) != 1 {
+		return fmt.Errorf("map entry %q must be single characters", value)
+	}
+	(*m)[left[0]] = right[0]
+	return nil
 }
