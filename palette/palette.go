@@ -69,6 +69,14 @@ func Load(path string) (*Palette, error) {
 	return &Palette{entries: entries}, nil
 }
 
+func MustLoad(path string) *Palette {
+	pal, err := Load(path)
+	if err != nil {
+		panic(err)
+	}
+	return pal
+}
+
 func (p *Palette) Entry(key rune) (Entry, error) {
 	if p == nil {
 		return Entry{}, fmt.Errorf("palette is nil")
@@ -86,6 +94,14 @@ func (p *Palette) Style(key rune) (grid.Style, error) {
 		return grid.Style{}, err
 	}
 	return entry.Style, nil
+}
+
+func (p *Palette) MustStyle(key rune) grid.Style {
+	style, err := p.Style(key)
+	if err != nil {
+		panic(err)
+	}
+	return style
 }
 
 func parseColor(name string) (tcell.Color, error) {
