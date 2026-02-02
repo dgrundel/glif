@@ -134,7 +134,8 @@ func loadCollisionMask(basePath string, sw, sh int) (*render.CollisionMask, erro
 	cells := make([]bool, sw*sh)
 	for y := 0; y < sh; y++ {
 		for x := 0; x < sw; x++ {
-			if runeAt(lines[y], x) != ' ' {
+			ch := runeAt(lines[y], x)
+			if ch != ' ' && ch != '.' {
 				cells[y*sw+x] = true
 			}
 		}
