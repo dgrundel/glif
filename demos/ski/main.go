@@ -42,7 +42,7 @@ const (
 	gateNearBuffer           = 2.0
 	gateRowsStep             = 2.0
 	gateLookaheadPadding     = 10.0
-	treeSpawnChance          = 0.28
+	treeSpawnChance          = 0.38
 	roughSpawnChance         = 0.16
 	treeSpawnMinRow          = 12.0
 	treeEdgeBiasBase         = 0.6
