@@ -88,6 +88,7 @@ type SkiGame struct {
 	tree       *render.Sprite
 	rough      *render.Sprite
 	uiStyle    grid.Style
+	alertStyle grid.Style
 	width      int
 	height     int
 	screenPX   int
@@ -121,6 +122,10 @@ func NewSkiGame() *SkiGame {
 	if err != nil {
 		log.Fatal(err)
 	}
+	alertStyle, err := pal.Style('e')
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	g := &SkiGame{
 		binds: input.ActionMap{
@@ -133,18 +138,19 @@ func NewSkiGame() *SkiGame {
 			"restart":     "key:enter",
 			"restart_alt": " ",
 		},
-		skiDown:   load("ski_down"),
-		skiLeft:   load("ski_left"),
-		skiRight:  load("ski_right"),
-		splash:    load("splash"),
-		flagLeft:  load("flag_left"),
-		flagRight: load("flag_right"),
-		tree:      load("trees"),
-		rough:     load("snow_rough"),
-		uiStyle:   uiStyle,
-		speed:     initialSpeed,
-		targetSpd: initialSpeed,
-		rng:       rand.New(rand.NewSource(time.Now().UnixNano())),
+		skiDown:    load("ski_down"),
+		skiLeft:    load("ski_left"),
+		skiRight:   load("ski_right"),
+		splash:     load("splash"),
+		flagLeft:   load("flag_left"),
+		flagRight:  load("flag_right"),
+		tree:       load("trees"),
+		rough:      load("snow_rough"),
+		uiStyle:    uiStyle,
+		alertStyle: alertStyle,
+		speed:      initialSpeed,
+		targetSpd:  initialSpeed,
+		rng:        rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 	g.playerSpr = g.skiDown
 	g.showSplash = true
@@ -277,7 +283,13 @@ func (g *SkiGame) Draw(r *render.Renderer) {
 		}
 		x := max(0, (r.Frame.W-len(msg))/2)
 		y := max(0, g.screenPY-screenMessageOffsetY)
-		r.DrawText(x, y, msg, g.uiStyle)
+		boxW := len(msg) + 2
+		boxX := max(0, x-1)
+		if boxX+boxW > r.Frame.W {
+			boxX = max(0, r.Frame.W-boxW)
+		}
+		r.Rect(boxX, y-1, boxW, 3, g.alertStyle, render.RectOptions{Fill: true})
+		r.DrawText(boxX+1, y, msg, g.alertStyle)
 	}
 }
 
