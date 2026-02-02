@@ -14,7 +14,6 @@ import (
 	"github.com/dgrundel/glif/input"
 	"github.com/dgrundel/glif/palette"
 	"github.com/dgrundel/glif/render"
-	"github.com/gdamore/tcell/v3"
 )
 
 type ObstacleKind int
@@ -118,18 +117,9 @@ func NewSkiGame() *SkiGame {
 		}
 		return sprite
 	}
-	pal, err := palette.Load("demos/ski/assets/default.palette")
-	if err != nil {
-		log.Fatal(err)
-	}
-	uiStyle, err := pal.Style('x')
-	if err != nil {
-		log.Fatal(err)
-	}
-	alertStyle, err := pal.Style('e')
-	if err != nil {
-		log.Fatal(err)
-	}
+	pal := palette.MustLoad("demos/ski/assets/default.palette")
+	uiStyle := pal.MustStyle('x')
+	alertStyle := pal.MustStyle('e')
 
 	g := &SkiGame{
 		binds: input.ActionMap{
@@ -564,7 +554,7 @@ func main() {
 		log.Fatal(err)
 	}
 	eng.ShowFPS = true
-	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: grid.Style{Fg: tcell.ColorReset, Bg: tcell.ColorWhite}}
+	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: game.uiStyle}
 	eng.Frame.ClearAll()
 	if err := eng.Run(game); err != nil {
 		log.Fatal(err)
