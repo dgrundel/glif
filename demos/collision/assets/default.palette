@@ -1,0 +1,6 @@
+// key fg bg [bold] [transparent]
+x #ffffff #000000
+g #44ff44 #000000
+r #ff4444 #000000
+b reset #000000
+. reset reset transparent
