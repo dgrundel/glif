@@ -92,7 +92,7 @@ type RectOptions struct {
 }
 
 r.Rect(x, y, w, h, style)                         // outline (defaults to tcell box runes)
-r.Rect(x, y, w, h, style, RectOptions{Fill: true}) // filled
+r.Rect(x, y, w, h, style, RectOptions{Fill: true}) // filled (no border)
 
 type LineOptions struct {
 	Rune rune

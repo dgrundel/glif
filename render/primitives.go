@@ -20,8 +20,8 @@ type LineOptions struct {
 	Rune rune
 }
 
-// Rect draws a rectangle. When Fill is true, the interior is filled; when Fill is false,
-// only the border is drawn.
+// Rect draws a rectangle. When Fill is true, the rectangle area is filled and no border is drawn.
+// When Fill is false, only the border is drawn.
 func (r *Renderer) Rect(x, y, w, h int, style grid.Style, opts ...RectOptions) {
 	if r == nil || r.Frame == nil || w <= 0 || h <= 0 {
 		return
@@ -36,11 +36,12 @@ func (r *Renderer) Rect(x, y, w, h int, style grid.Style, opts ...RectOptions) {
 		if fillRune == 0 {
 			fillRune = ' '
 		}
-		for row := 1; row < h-1; row++ {
-			for col := 1; col < w-1; col++ {
+		for row := 0; row < h; row++ {
+			for col := 0; col < w; col++ {
 				r.Frame.Set(x+col, y+row, grid.Cell{Ch: fillRune, Style: style})
 			}
 		}
+		return
 	}
 
 	if w < 2 || h < 2 {
