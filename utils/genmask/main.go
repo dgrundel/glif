@@ -90,6 +90,9 @@ func main() {
 	base := strings.TrimSuffix(spritePath, filepath.Ext(spritePath))
 	if writeColor {
 		outPath := base + ".color"
+		if strings.HasSuffix(spritePath, ".animation") {
+			outPath = base + ".animation.color"
+		}
 		if err := os.WriteFile(outPath, []byte(out), 0o644); err != nil {
 			fmt.Fprintf(os.Stderr, "write color: %v\n", err)
 			os.Exit(1)
