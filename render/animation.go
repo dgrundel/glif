@@ -133,7 +133,7 @@ func loadAnimationColors(base, name string, frameH, frameCount int) ([][]rune, e
 			return nil, err
 		}
 		lines := toRunesLines(linesRaw)
-		w, h := dims(lines)
+		_, h := dims(lines)
 		if h != frameH*frameCount {
 			return nil, fmt.Errorf("animation color height differs: expected=%d got=%d", frameH*frameCount, h)
 		}
@@ -146,7 +146,7 @@ func loadAnimationColors(base, name string, frameH, frameCount int) ([][]rune, e
 		return nil, err
 	}
 	lines := toRunesLines(linesRaw)
-	w, h := dims(lines)
+	_, h := dims(lines)
 	if h != frameH {
 		return nil, fmt.Errorf("base color height differs: expected=%d got=%d", frameH, h)
 	}
@@ -156,7 +156,6 @@ func loadAnimationColors(base, name string, frameH, frameCount int) ([][]rune, e
 			out = append(out, line)
 		}
 	}
-	_ = w
 	return out, nil
 }
 
