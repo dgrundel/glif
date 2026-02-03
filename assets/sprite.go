@@ -66,6 +66,14 @@ func LoadSprite(basePath string) (*render.Sprite, error) {
 	return &render.Sprite{W: sw, H: sh, Cells: cells, Collision: collisionMask, Source: basePath}, nil
 }
 
+func MustLoadSprite(basePath string) *render.Sprite {
+	sprite, err := LoadSprite(basePath)
+	if err != nil {
+		panic(err)
+	}
+	return sprite
+}
+
 func resolvePalettePath(basePath string) string {
 	candidate := basePath + ".palette"
 	if fileExists(candidate) {

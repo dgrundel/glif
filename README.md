@@ -19,6 +19,49 @@ go run ./demos/blackjack
 
 ![Screenshot of gameplay](demos/blackjack/gameplay-screenshot.png)
 
+## Quickstart
+
+Minimal loop that loads and draws a sprite:
+
+```
+package main
+
+import (
+	"log"
+
+	"github.com/dgrundel/glif/assets"
+	"github.com/dgrundel/glif/engine"
+	"github.com/dgrundel/glif/input"
+	"github.com/dgrundel/glif/render"
+)
+
+type Game struct {
+	sprite *render.Sprite
+	quit   bool
+}
+
+func (g *Game) Update(dt float64)         {}
+func (g *Game) Resize(w, h int)           {}
+func (g *Game) ShouldQuit() bool          { return g.quit }
+func (g *Game) Draw(r *render.Renderer)   { r.DrawSprite(2, 2, g.sprite) }
+func (g *Game) SetInput(state input.State) {
+	if state.Pressed["key:esc"] || state.Pressed["key:ctrl+c"] {
+		g.quit = true
+	}
+}
+
+func main() {
+	game := &Game{sprite: assets.MustLoadSprite("path/to/sprite")}
+	eng, err := engine.New(game, 0)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := eng.Run(game); err != nil {
+		log.Fatal(err)
+	}
+}
+```
+
 ## Sprite assets
 
 Masked sprites use three files with a shared base name:
@@ -80,6 +123,31 @@ Here's the result as rendered by the preview util:
 
 ![Rendered penguin sprite](demos/penguin/penguin-preview.png)
 
+## Animation
+
+Animations are stored in a separate file named `<base>.<name>.animation`. The width must match the base sprite, and the height must be a multiple of the base sprite height. Frames are stacked vertically.
+
+Optional color masks:
+- `<base>.<name>.animation.color` (stacked to match frame count)
+- If missing, the base `.color` is repeated for all frames.
+
+Load and play:
+```
+sprite, _ := assets.LoadSprite("path/to/player")
+anim, _ := sprite.LoadAnimation("walk")
+player := anim.Play(8) // fps
+player.Update(dt)
+frame := player.Sprite()
+```
+
+## Collision
+
+If `<base>.collision` exists, any non-space character (and not `.`) is collidable. Use the collision API:
+
+```
+hit := collision.Overlaps(ax, ay, aSprite, bx, by, bSprite)
+```
+
 ## Color palettes
 
 Load a palette and fetch styles by key:
@@ -115,6 +183,37 @@ type LineOptions struct {
 r.HLine(x, y, length, style)
 r.VLine(x, y, length, style)
 ```
+
+## Input
+
+Input is delivered as per-frame state with `Pressed` and `Held` maps. Use an action map to keep key bindings out of game logic:
+
+```
+binds := input.ActionMap{
+	"left":  "key:left",
+	"right": "key:right",
+	"quit":  "key:esc",
+}
+
+if state.Pressed[binds["quit"]] { ... }
+if state.Held[binds["left"]] { ... }
+```
+
+## Engine timing
+
+The engine uses a fixed timestep loop. When you pass `0` to `engine.New`, the default tick is ~60 FPS (16ms).
+
+## Debug tips
+
+- FPS overlay: `eng.ShowFPS = true`
+- Sprite preview tool: `go run ./utils/spritepreview path/to/folder`
+
+## Troubleshooting
+
+- **Missing palette key**: update the palette or color mask to include the required key.
+- **Sprite/color size mismatch**: ensure `.sprite` and `.color` have the same dimensions.
+- **Collision size mismatch**: `.collision` must match the sprite dimensions.
+- **Animation size mismatch**: animation width must match the base sprite width and height must be a multiple of the base sprite height.
 
 ## Tile maps
 
