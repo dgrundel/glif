@@ -70,9 +70,9 @@ type Obstacle struct {
 }
 
 type SkiGame struct {
-	state input.State
-	binds input.ActionMap
-	quit  bool
+	binds   input.ActionMap
+	quit    bool
+	actions input.ActionState
 
 	score          int
 	gameOver       bool
@@ -169,26 +169,26 @@ func (g *SkiGame) reset() {
 }
 
 func (g *SkiGame) Update(dt float64) {
-	if g.pressed("quit") || g.pressed("quit_alt") {
+	if g.actions.Pressed["quit"] || g.actions.Pressed["quit_alt"] {
 		g.quit = true
 		return
 	}
 	if g.gameOver {
-		if g.pressed("restart") || g.pressed("restart_alt") {
+		if g.actions.Pressed["restart"] || g.actions.Pressed["restart_alt"] {
 			g.reset()
 		}
 		return
 	}
 	if g.showSplash {
-		if g.pressed("restart") || g.pressed("restart_alt") {
+		if g.actions.Pressed["restart"] || g.actions.Pressed["restart_alt"] {
 			g.showSplash = false
 		}
 		return
 	}
 
 	g.tickSteerTTL(dt)
-	left := g.steerHeld("left", "left_alt")
-	right := g.steerHeld("right", "right_alt")
+	left := g.actions.Held["left"] || g.actions.Held["left_alt"] || g.steerTTLActive("left")
+	right := g.actions.Held["right"] || g.actions.Held["right_alt"] || g.steerTTLActive("right")
 	moveSpd := g.speed - g.speedPen
 	if moveSpd < 0 {
 		moveSpd = 0
@@ -310,35 +310,23 @@ func (g *SkiGame) Resize(w, h int) {
 	g.screenPY = max(0, h/5)
 }
 
-func (g *SkiGame) SetInput(state input.State) {
-	g.state = state
+func (g *SkiGame) ActionMap() input.ActionMap {
+	return g.binds
+}
+
+func (g *SkiGame) UpdateActionState(state input.ActionState) {
+	g.actions = state
 }
 
 func (g *SkiGame) ShouldQuit() bool {
 	return g.quit
 }
 
-func (g *SkiGame) pressed(action input.Action) bool {
-	key, ok := g.binds[action]
-	if !ok {
-		return false
-	}
-	return g.state.Pressed[key]
-}
-
-func (g *SkiGame) held(action input.Action) bool {
-	key, ok := g.binds[action]
-	if !ok {
-		return false
-	}
-	return g.state.Held[key]
-}
-
 func (g *SkiGame) tickSteerTTL(dt float64) {
-	if g.pressed("left") || g.pressed("left_alt") {
+	if g.actions.Pressed["left"] || g.actions.Pressed["left_alt"] {
 		g.leftTTL = steerTTLSeconds
 	}
-	if g.pressed("right") || g.pressed("right_alt") {
+	if g.actions.Pressed["right"] || g.actions.Pressed["right_alt"] {
 		g.rightTTL = steerTTLSeconds
 	}
 	if g.leftTTL > 0 {
@@ -355,11 +343,8 @@ func (g *SkiGame) tickSteerTTL(dt float64) {
 	}
 }
 
-func (g *SkiGame) steerHeld(primary, alt input.Action) bool {
-	if g.held(primary) || g.held(alt) {
-		return true
-	}
-	if primary == "left" {
+func (g *SkiGame) steerTTLActive(direction input.Action) bool {
+	if direction == "left" {
 		return g.leftTTL > 0
 	}
 	return g.rightTTL > 0
