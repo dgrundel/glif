@@ -26,6 +26,12 @@ func (r *Renderer) Rect(x, y, w, h int, style grid.Style, opts ...RectOptions) {
 	if r == nil || r.Frame == nil || w <= 0 || h <= 0 {
 		return
 	}
+	if r.camera != nil {
+		if !r.camera.Visible(x, y, w, h) {
+			return
+		}
+		x, y = r.camera.WorldToScreen(x, y)
+	}
 	opt := rectDefaults()
 	if len(opts) > 0 {
 		opt = mergeRectOptions(opt, opts[0])
@@ -66,6 +72,12 @@ func (r *Renderer) HLine(x, y, length int, style grid.Style, opts ...LineOptions
 	if r == nil || r.Frame == nil || length <= 0 {
 		return
 	}
+	if r.camera != nil {
+		if !r.camera.Visible(x, y, length, 1) {
+			return
+		}
+		x, y = r.camera.WorldToScreen(x, y)
+	}
 	ch := tcell.RuneHLine
 	if len(opts) > 0 && opts[0].Rune != 0 {
 		ch = opts[0].Rune
@@ -79,6 +91,12 @@ func (r *Renderer) HLine(x, y, length int, style grid.Style, opts ...LineOptions
 func (r *Renderer) VLine(x, y, length int, style grid.Style, opts ...LineOptions) {
 	if r == nil || r.Frame == nil || length <= 0 {
 		return
+	}
+	if r.camera != nil {
+		if !r.camera.Visible(x, y, 1, length) {
+			return
+		}
+		x, y = r.camera.WorldToScreen(x, y)
 	}
 	ch := tcell.RuneVLine
 	if len(opts) > 0 && opts[0].Rune != 0 {

@@ -39,7 +39,7 @@ type World struct {
 	Velocities map[Entity]*Velocity
 	Sprites    map[Entity]*SpriteRef
 	TileMaps   map[Entity]*TileMapRef
-	Camera     *camera.Camera
+	Camera     camera.Camera
 
 	UpdateSystems []UpdateSystem
 
@@ -129,22 +129,20 @@ func (w *World) Draw(r *render.Renderer) {
 	})
 	for _, item := range items {
 		if item.sprite != nil {
-			x := item.pos.X
-			y := item.pos.Y
+			x := int(math.Floor(item.pos.X))
+			y := int(math.Floor(item.pos.Y))
 			if w.Camera != nil {
-				if !w.Camera.InView(x, y, item.sprite.Sprite.W, item.sprite.Sprite.H) {
+				if !w.Camera.Visible(x, y, item.sprite.Sprite.W, item.sprite.Sprite.H) {
 					continue
 				}
 				x, y = w.Camera.WorldToScreen(x, y)
 			}
-			sx := int(math.Floor(x))
-			sy := int(math.Floor(y))
-			r.DrawSprite(sx, sy, item.sprite.Sprite)
+			r.DrawSprite(x, y, item.sprite.Sprite)
 			continue
 		}
 		if item.tile != nil {
-			x := item.pos.X
-			y := item.pos.Y
+			x := int(math.Floor(item.pos.X))
+			y := int(math.Floor(item.pos.Y))
 			item.tile.Map.Draw(r, x, y, w.Camera)
 		}
 	}
