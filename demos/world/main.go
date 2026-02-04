@@ -133,6 +133,10 @@ func (d *Demo) UpdateActionState(state input.ActionState) {
 	d.actions = state
 }
 
+func (d *Demo) ClearStyle() grid.Style {
+	return d.bg
+}
+
 func (d *Demo) ShouldQuit() bool {
 	return d.quit
 }
@@ -201,8 +205,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: demo.bg}
-	eng.Frame.ClearAll()
 	if err := eng.Run(demo); err != nil {
 		log.Fatal(err)
 	}

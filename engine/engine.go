@@ -26,6 +26,10 @@ type ActionAware interface {
 	UpdateActionState(state input.ActionState)
 }
 
+type ClearStyleProvider interface {
+	ClearStyle() grid.Style
+}
+
 type Quitter interface {
 	ShouldQuit() bool
 }
@@ -82,6 +86,11 @@ func (e *Engine) Run(game Game) error {
 	}
 	const maxAccum = 0.25
 
+	if cs, ok := game.(ClearStyleProvider); ok {
+		e.Frame.Clear.Style = cs.ClearStyle()
+		e.Frame.ClearAll()
+	}
+
 	for {
 		select {
 		case <-ticker.C:
@@ -100,6 +109,10 @@ func (e *Engine) Run(game Game) error {
 						e.Frame.Resize(w, h)
 						e.Renderer.SetFrame(e.Frame)
 						e.Screen.Clear()
+						if cs, ok := game.(ClearStyleProvider); ok {
+							e.Frame.Clear.Style = cs.ClearStyle()
+							e.Frame.ClearAll()
+						}
 						game.Resize(w, h)
 					default:
 						e.Input.HandleEvent(ev)

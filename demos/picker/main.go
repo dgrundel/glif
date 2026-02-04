@@ -227,8 +227,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: grid.Style{Fg: tcell.ColorReset, Bg: tcell.ColorReset}}
-	eng.Frame.ClearAll()
 	if err := eng.Run(picker); err != nil {
 		log.Fatal(err)
 	}

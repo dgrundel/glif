@@ -318,6 +318,10 @@ func (g *SkiGame) UpdateActionState(state input.ActionState) {
 	g.actions = state
 }
 
+func (g *SkiGame) ClearStyle() grid.Style {
+	return g.uiStyle
+}
+
 func (g *SkiGame) ShouldQuit() bool {
 	return g.quit
 }
@@ -539,8 +543,6 @@ func main() {
 		log.Fatal(err)
 	}
 	eng.ShowFPS = true
-	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: game.uiStyle}
-	eng.Frame.ClearAll()
 	if err := eng.Run(game); err != nil {
 		log.Fatal(err)
 	}

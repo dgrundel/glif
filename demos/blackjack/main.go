@@ -186,6 +186,10 @@ func (b *Blackjack) UpdateActionState(state input.ActionState) {
 	b.actions = state
 }
 
+func (b *Blackjack) ClearStyle() grid.Style {
+	return b.bg
+}
+
 func (b *Blackjack) ShouldQuit() bool {
 	return b.quit
 }
@@ -446,8 +450,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: game.bg}
-	eng.Frame.ClearAll()
 	if err := eng.Run(game); err != nil {
 		log.Fatal(err)
 	}

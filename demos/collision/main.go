@@ -102,6 +102,10 @@ func (d *CollisionDemo) UpdateActionState(state input.ActionState) {
 	d.actions = state
 }
 
+func (d *CollisionDemo) ClearStyle() grid.Style {
+	return d.bgStyle
+}
+
 func (d *CollisionDemo) ShouldQuit() bool {
 	return d.quit
 }
@@ -127,8 +131,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: demo.bgStyle}
-	eng.Frame.ClearAll()
 	if err := eng.Run(demo); err != nil {
 		log.Fatal(err)
 	}

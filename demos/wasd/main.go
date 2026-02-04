@@ -99,6 +99,10 @@ func (g *Game) UpdateActionState(state input.ActionState) {
 	g.actions = state
 }
 
+func (g *Game) ClearStyle() grid.Style {
+	return g.bg
+}
+
 func (g *Game) applyMovement() {
 	speed := 10.0
 	dx := 0.0
@@ -145,8 +149,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: game.bg}
-	eng.Frame.ClearAll()
 	if err := eng.Run(game); err != nil {
 		log.Fatal(err)
 	}

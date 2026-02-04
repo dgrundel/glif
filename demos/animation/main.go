@@ -94,6 +94,11 @@ func (d *AnimationDemo) UpdateActionState(state input.ActionState) {
 	d.actions = state
 }
 
+// ClearStyle provides the background style for the engine clear.
+func (d *AnimationDemo) ClearStyle() grid.Style {
+	return d.bg
+}
+
 // ShouldQuit tells the engine when to exit.
 func (d *AnimationDemo) ShouldQuit() bool {
 	return d.quit
@@ -114,9 +119,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Clear the frame with the demo background style.
-	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: demo.bg}
-	eng.Frame.ClearAll()
 	if err := eng.Run(demo); err != nil {
 		log.Fatal(err)
 	}
