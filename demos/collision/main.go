@@ -13,7 +13,6 @@ import (
 )
 
 type CollisionDemo struct {
-	state     input.State
 	binds     input.ActionMap
 	quit      bool
 	playerX   float64
@@ -24,6 +23,7 @@ type CollisionDemo struct {
 	okStyle   grid.Style
 	noStyle   grid.Style
 	bgStyle   grid.Style
+	actions   input.ActionState
 }
 
 func NewCollisionDemo() *CollisionDemo {
@@ -53,21 +53,21 @@ func NewCollisionDemo() *CollisionDemo {
 }
 
 func (d *CollisionDemo) Update(dt float64) {
-	if d.pressed("quit") || d.pressed("quit_alt") {
+	if d.actions.Pressed["quit"] || d.actions.Pressed["quit_alt"] {
 		d.quit = true
 		return
 	}
 	const moveSpeed = 12.0
-	if d.held("left") || d.held("left_alt") {
+	if d.actions.Held["left"] || d.actions.Held["left_alt"] {
 		d.playerX -= moveSpeed * dt
 	}
-	if d.held("right") || d.held("right_alt") {
+	if d.actions.Held["right"] || d.actions.Held["right_alt"] {
 		d.playerX += moveSpeed * dt
 	}
-	if d.held("up") || d.held("up_alt") {
+	if d.actions.Held["up"] || d.actions.Held["up_alt"] {
 		d.playerY -= moveSpeed * dt
 	}
-	if d.held("down") || d.held("down_alt") {
+	if d.actions.Held["down"] || d.actions.Held["down_alt"] {
 		d.playerY += moveSpeed * dt
 	}
 }
@@ -94,28 +94,16 @@ func (d *CollisionDemo) Resize(w, h int) {
 	_ = h
 }
 
-func (d *CollisionDemo) SetInput(state input.State) {
-	d.state = state
+func (d *CollisionDemo) ActionMap() input.ActionMap {
+	return d.binds
+}
+
+func (d *CollisionDemo) UpdateActionState(state input.ActionState) {
+	d.actions = state
 }
 
 func (d *CollisionDemo) ShouldQuit() bool {
 	return d.quit
-}
-
-func (d *CollisionDemo) pressed(action input.Action) bool {
-	key, ok := d.binds[action]
-	if !ok {
-		return false
-	}
-	return d.state.Pressed[key]
-}
-
-func (d *CollisionDemo) held(action input.Action) bool {
-	key, ok := d.binds[action]
-	if !ok {
-		return false
-	}
-	return d.state.Held[key]
 }
 
 func mustSprite(base string) *render.Sprite {

@@ -14,13 +14,13 @@ import (
 // AnimationDemo shows a single looping animation and exits on Esc/Ctrl+C.
 // It keeps the current frame in player and advances it via playerAn.Update.
 type AnimationDemo struct {
-	state    input.State             // current input snapshot from the engine
 	binds    input.ActionMap         // action -> key bindings
 	quit     bool                    // set true to exit the demo
 	player   *render.Sprite          // current frame to draw
 	playerAn *render.AnimationPlayer // animation playback state
 	text     grid.Style              // UI text style (palette-driven)
 	bg       grid.Style              // background style (palette-driven)
+	actions  input.ActionState       // mapped actions for this frame
 }
 
 // NewAnimationDemo loads assets, creates the animation player, and seeds styles.
@@ -56,7 +56,7 @@ func NewAnimationDemo() *AnimationDemo {
 // Update advances animation time and handles exit input.
 func (d *AnimationDemo) Update(dt float64) {
 	// Exit on Esc/Ctrl+C.
-	if d.pressed("quit") || d.pressed("quit_alt") {
+	if d.actions.Pressed["quit"] || d.actions.Pressed["quit_alt"] {
 		d.quit = true
 		return
 	}
@@ -84,23 +84,19 @@ func (d *AnimationDemo) Resize(w, h int) {
 	_ = h
 }
 
-// SetInput receives the per-frame input state from the engine.
-func (d *AnimationDemo) SetInput(state input.State) {
-	d.state = state
+// ActionMap returns the bindings used for action mapping.
+func (d *AnimationDemo) ActionMap() input.ActionMap {
+	return d.binds
+}
+
+// UpdateActionState receives the per-frame action state from the engine.
+func (d *AnimationDemo) UpdateActionState(state input.ActionState) {
+	d.actions = state
 }
 
 // ShouldQuit tells the engine when to exit.
 func (d *AnimationDemo) ShouldQuit() bool {
 	return d.quit
-}
-
-// pressed checks for a one-frame key press.
-func (d *AnimationDemo) pressed(action input.Action) bool {
-	key, ok := d.binds[action]
-	if !ok {
-		return false
-	}
-	return d.state.Pressed[key]
 }
 
 // max is a tiny helper for centering.

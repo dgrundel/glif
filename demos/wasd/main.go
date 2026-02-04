@@ -17,8 +17,8 @@ type Game struct {
 	player  ecs.Entity
 	screenW int
 	screenH int
-	state   input.State
 	binds   input.ActionMap
+	actions input.ActionState
 	bg      grid.Style
 	quit    bool
 }
@@ -91,8 +91,12 @@ func (g *Game) setVelocity(dx, dy float64) {
 	vel.DY = dy
 }
 
-func (g *Game) SetInput(state input.State) {
-	g.state = state
+func (g *Game) ActionMap() input.ActionMap {
+	return g.binds
+}
+
+func (g *Game) UpdateActionState(state input.ActionState) {
+	g.actions = state
 }
 
 func (g *Game) applyMovement() {
@@ -128,19 +132,11 @@ func (g *Game) ShouldQuit() bool {
 }
 
 func (g *Game) held(action input.Action) bool {
-	key, ok := g.binds[action]
-	if !ok {
-		return false
-	}
-	return g.state.Held[key]
+	return g.actions.Held[action]
 }
 
 func (g *Game) pressed(action input.Action) bool {
-	key, ok := g.binds[action]
-	if !ok {
-		return false
-	}
-	return g.state.Pressed[key]
+	return g.actions.Pressed[action]
 }
 
 func main() {

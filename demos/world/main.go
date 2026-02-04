@@ -15,14 +15,14 @@ import (
 )
 
 type Demo struct {
-	world  *ecs.World
-	cam    *camera.Camera
-	tile   *tilemap.Map
-	state  input.State
-	binds  input.ActionMap
-	player ecs.Entity
-	quit   bool
-	bg     grid.Style
+	world   *ecs.World
+	cam     *camera.Camera
+	tile    *tilemap.Map
+	binds   input.ActionMap
+	actions input.ActionState
+	player  ecs.Entity
+	quit    bool
+	bg      grid.Style
 }
 
 func NewDemo() *Demo {
@@ -95,23 +95,23 @@ func (d *Demo) Update(dt float64) {
 	d.applyMovement()
 	d.updateCamera(dt)
 	d.world.Update(dt)
-	if d.pressed("quit") || d.pressed("quit_alt") {
+	if d.actions.Pressed["quit"] || d.actions.Pressed["quit_alt"] {
 		d.quit = true
 	}
 }
 
 func (d *Demo) updateCamera(dt float64) {
 	speed := 12.0
-	if d.held("pan_left") {
+	if d.actions.Held["pan_left"] {
 		d.cam.X -= speed * dt
 	}
-	if d.held("pan_right") {
+	if d.actions.Held["pan_right"] {
 		d.cam.X += speed * dt
 	}
-	if d.held("pan_up") {
+	if d.actions.Held["pan_up"] {
 		d.cam.Y -= speed * dt
 	}
-	if d.held("pan_down") {
+	if d.actions.Held["pan_down"] {
 		d.cam.Y += speed * dt
 	}
 	d.clampCamera()
@@ -125,47 +125,35 @@ func (d *Demo) Resize(w, h int) {
 	d.world.Resize(w, h)
 }
 
-func (d *Demo) SetInput(state input.State) {
-	d.state = state
+func (d *Demo) ActionMap() input.ActionMap {
+	return d.binds
+}
+
+func (d *Demo) UpdateActionState(state input.ActionState) {
+	d.actions = state
 }
 
 func (d *Demo) ShouldQuit() bool {
 	return d.quit
 }
 
-func (d *Demo) held(action input.Action) bool {
-	key, ok := d.binds[action]
-	if !ok {
-		return false
-	}
-	return d.state.Held[key]
-}
-
-func (d *Demo) pressed(action input.Action) bool {
-	key, ok := d.binds[action]
-	if !ok {
-		return false
-	}
-	return d.state.Pressed[key]
-}
-
 func (d *Demo) applyMovement() {
 	speed := 10.0
 	dx := 0.0
 	dy := 0.0
-	if d.held("move_left") || d.pressed("move_left") {
+	if d.actions.Held["move_left"] || d.actions.Pressed["move_left"] {
 		dx -= 1
 	}
-	if d.held("move_right") || d.pressed("move_right") {
+	if d.actions.Held["move_right"] || d.actions.Pressed["move_right"] {
 		dx += 1
 	}
-	if d.held("move_up") || d.pressed("move_up") {
+	if d.actions.Held["move_up"] || d.actions.Pressed["move_up"] {
 		dy -= 1
 	}
-	if d.held("move_down") || d.pressed("move_down") {
+	if d.actions.Held["move_down"] || d.actions.Pressed["move_down"] {
 		dy += 1
 	}
-	if d.pressed("stop") {
+	if d.actions.Pressed["stop"] {
 		dx = 0
 		dy = 0
 	}

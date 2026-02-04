@@ -26,9 +26,9 @@ const (
 )
 
 type Blackjack struct {
-	state input.State
-	binds input.ActionMap
-	quit  bool
+	binds   input.ActionMap
+	quit    bool
+	actions input.ActionState
 
 	phase        Phase
 	menuIndex    int
@@ -178,8 +178,12 @@ func (b *Blackjack) Resize(w, h int) {
 	b.height = h
 }
 
-func (b *Blackjack) SetInput(state input.State) {
-	b.state = state
+func (b *Blackjack) ActionMap() input.ActionMap {
+	return b.binds
+}
+
+func (b *Blackjack) UpdateActionState(state input.ActionState) {
+	b.actions = state
 }
 
 func (b *Blackjack) ShouldQuit() bool {
@@ -187,11 +191,7 @@ func (b *Blackjack) ShouldQuit() bool {
 }
 
 func (b *Blackjack) pressed(action input.Action) bool {
-	key, ok := b.binds[action]
-	if !ok {
-		return false
-	}
-	return b.state.Pressed[key]
+	return b.actions.Pressed[action]
 }
 
 func (b *Blackjack) updateMenu(index *int, total int) {

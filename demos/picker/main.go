@@ -14,9 +14,9 @@ import (
 )
 
 type Picker struct {
-	state    input.State
 	binds    input.ActionMap
 	quit     bool
+	actions  input.ActionState
 	selected int
 	values   [3]int
 	incHeld  float64
@@ -136,8 +136,12 @@ func (p *Picker) Resize(w, h int) {
 	_ = h
 }
 
-func (p *Picker) SetInput(state input.State) {
-	p.state = state
+func (p *Picker) ActionMap() input.ActionMap {
+	return p.binds
+}
+
+func (p *Picker) UpdateActionState(state input.ActionState) {
+	p.actions = state
 }
 
 func (p *Picker) ShouldQuit() bool {
@@ -145,19 +149,11 @@ func (p *Picker) ShouldQuit() bool {
 }
 
 func (p *Picker) pressed(action input.Action) bool {
-	key, ok := p.binds[action]
-	if !ok {
-		return false
-	}
-	return p.state.Pressed[key]
+	return p.actions.Pressed[action]
 }
 
 func (p *Picker) held(action input.Action) bool {
-	key, ok := p.binds[action]
-	if !ok {
-		return false
-	}
-	return p.state.Held[key]
+	return p.actions.Held[action]
 }
 
 func (p *Picker) adjustValue(dt float64) {
