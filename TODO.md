@@ -4,32 +4,19 @@ This captures items from `chat.md` that are not implemented yet, plus areas wher
 
 ## Not implemented yet
 
-- **Camera / world-to-screen transform**
-  - No `Camera` type or projection; positions are treated as screen coordinates.
-  - Need world space + camera viewport + projection/clipping.
-
-- **Render primitives beyond sprites/text**
-  - Only `DrawText` and `DrawSprite` exist.
-  - Missing helpers like `FillRect`, `Line`, etc.
+-- **Camera / world-to-screen transform**
+  - `camera` package exists, but it isn't wired as a standard world-to-screen projection layer.
+  - Need consistent world space + camera viewport + projection/clipping across demos.
 
 - **Render queue / draw commands**
   - Rendering is direct (ECS draw with Z sort).
   - No explicit render command queue or command batching.
 
-- **Sprite animation / sprite sheets**
-  - Assets loader supports masked sprites only.
-  - No multi-frame sprites or animation system.
+-- **Tile map collision layers**
+  - Tile maps exist, but there is no collision/grid layer support yet.
 
-- **Collision / tile maps**
-  - No tile map layer or collision system (grid or AABB).
-
-- **Action mapping on input**
-  - `input` package is generic key state (held/pressed).
-  - No action mapping layer (e.g., move/quit/interact bindings).
-
-- **Fixed timestep loop**
-  - `engine` uses variable `dt` from wall clock.
-  - No fixed-step accumulator or decoupled render/update.
+-- **Action mapping layer in engine**
+  - Action maps are used in demos, but there is no centralized engine layer.
 
 - **Terminal UI extras**
   - Alt-screen/cursor hide were mentioned, but not explicitly implemented.
