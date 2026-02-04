@@ -20,6 +20,29 @@ type Key string
 // ActionMap maps actions to keys.
 type ActionMap map[Action]Key
 
+type ActionState struct {
+	Held    map[Action]bool
+	Pressed map[Action]bool
+}
+
+type Mapper struct {
+	Map ActionMap
+}
+
+func (m Mapper) MapState(state State) ActionState {
+	held := map[Action]bool{}
+	pressed := map[Action]bool{}
+	for action, key := range m.Map {
+		if state.Held[key] {
+			held[action] = true
+		}
+		if state.Pressed[key] {
+			pressed[action] = true
+		}
+	}
+	return ActionState{Held: held, Pressed: pressed}
+}
+
 type Manager struct {
 	hold    float64
 	keys    map[Key]float64

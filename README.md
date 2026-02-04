@@ -35,19 +35,33 @@ import (
 	"github.com/dgrundel/glif/render"
 )
 
+const (
+	ActionQuit input.Action = "quit"
+)
+
 type Game struct {
 	sprite *render.Sprite
 	quit   bool
+	actions input.ActionState
 }
 
-func (g *Game) Update(dt float64)         {}
+func (g *Game) Update(dt float64) {
+	if g.actions.Pressed[ActionQuit] {
+		g.quit = true
+	}
+}
 func (g *Game) Resize(w, h int)           {}
 func (g *Game) ShouldQuit() bool          { return g.quit }
 func (g *Game) Draw(r *render.Renderer)   { r.DrawSprite(2, 2, g.sprite) }
-func (g *Game) SetInput(state input.State) {
-	if state.Pressed["key:esc"] || state.Pressed["key:ctrl+c"] {
-		g.quit = true
+
+func (g *Game) ActionMap() input.ActionMap {
+	return input.ActionMap{
+		ActionQuit: "key:esc",
 	}
+}
+
+func (g *Game) UpdateActionState(state input.ActionState) {
+	g.actions = state
 }
 
 func main() {
@@ -197,6 +211,24 @@ binds := input.ActionMap{
 
 if state.Pressed[binds["quit"]] { ... }
 if state.Held[binds["left"]] { ... }
+```
+
+The engine can also pull action maps and push action state each frame:
+
+```
+type Game struct {
+	actions input.ActionState
+}
+
+func (g *Game) ActionMap() input.ActionMap {
+	return input.ActionMap{
+		"quit": "key:esc",
+	}
+}
+
+func (g *Game) UpdateActionState(state input.ActionState) {
+	g.actions = state
+}
 ```
 
 ## Engine timing

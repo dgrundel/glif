@@ -21,6 +21,11 @@ type InputAware interface {
 	SetInput(state input.State)
 }
 
+type ActionAware interface {
+	ActionMap() input.ActionMap
+	UpdateActionState(state input.ActionState)
+}
+
 type Quitter interface {
 	ShouldQuit() bool
 }
@@ -108,6 +113,15 @@ func (e *Engine) Run(game Game) error {
 			state := e.Input.Step(dt)
 			if ia, ok := game.(InputAware); ok {
 				ia.SetInput(state)
+			}
+			if aa, ok := game.(ActionAware); ok {
+				actions := aa.ActionMap()
+				if actions != nil {
+					mapper := input.Mapper{Map: actions}
+					aa.UpdateActionState(mapper.MapState(state))
+				} else {
+					aa.UpdateActionState(input.ActionState{})
+				}
 			}
 
 			accumulator += dt
