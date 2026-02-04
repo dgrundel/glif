@@ -1,7 +1,5 @@
 # TODO
 
-This captures items from `chat.md` that are not implemented yet, plus areas where the implementation differs from the original architectural notes.
-
 ## Not implemented yet
 
 - **Camera / world-to-screen transform**
@@ -17,7 +15,3 @@ This captures items from `chat.md` that are not implemented yet, plus areas wher
 - **ECS vs scene**
   - We moved directly to a minimal ECS (`ecs` package) rather than a `scene` interface.
   - Entities are IDs with component maps; systems are lightweight functions.
-
-- **Diff strategy**
-  - Current `term.Present` is cell-by-cell diffing.
-  - Suggested row-run diffing / hashing are not implemented.
