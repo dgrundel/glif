@@ -535,6 +535,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	eng.Screen.SetTitle("Ski-Daddle")
 	eng.ShowFPS = true
 	if err := eng.Run(game); err != nil {
 		log.Fatal(err)

@@ -438,6 +438,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	eng.Screen.SetTitle("Blackjack")
 	if err := eng.Run(game); err != nil {
 		log.Fatal(err)
 	}

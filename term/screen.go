@@ -38,6 +38,10 @@ func (s *Screen) Size() (int, int) {
 	return s.screen.Size()
 }
 
+func (s *Screen) SetTitle(title string) {
+	s.screen.SetTitle(title)
+}
+
 func (s *Screen) Events() <-chan tcell.Event {
 	return s.screen.EventQ()
 }

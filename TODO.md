@@ -12,13 +12,6 @@ This captures items from `chat.md` that are not implemented yet, plus areas wher
   - Rendering is direct (ECS draw with Z sort).
   - No explicit render command queue or command batching.
 
-- **Tile map collision layers**
-  - Tile maps exist, but there is no collision/grid layer support yet.
-
-- **Terminal UI extras**
-  - Alt-screen/cursor hide were mentioned, but not explicitly implemented.
-  - tcell handles much of this implicitly; no explicit API in `term`.
-
 ## Implemented differently than initial notes
 
 - **ECS vs scene**
