@@ -38,10 +38,7 @@ func NewDemo() *Demo {
 	cam := &camera.Camera{}
 	world.Camera = cam
 
-	duck, err := assets.LoadSprite("demos/world/assets/duck")
-	if err != nil {
-		log.Fatal(err)
-	}
+	duck := assets.MustLoadSprite("demos/world/assets/duck")
 
 	player := world.NewEntity()
 	world.AddPosition(player, 0, 0)

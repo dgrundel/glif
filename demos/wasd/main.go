@@ -34,10 +34,7 @@ func NewGame() *Game {
 	}
 	world := ecs.NewWorld()
 
-	duck, err := assets.LoadSprite("demos/wasd/assets/duck")
-	if err != nil {
-		log.Fatal(err)
-	}
+	duck := assets.MustLoadSprite("demos/wasd/assets/duck")
 
 	player := world.NewEntity()
 	world.AddPosition(player, 0, 0)

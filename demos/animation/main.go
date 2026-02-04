@@ -29,10 +29,7 @@ func NewAnimationDemo() *AnimationDemo {
 	pal := palette.MustLoad("demos/animation/assets/default.palette")
 
 	// Base sprite provides size + color + optional collision data.
-	sprite, err := assets.LoadSprite("demos/animation/assets/explosion")
-	if err != nil {
-		log.Fatal(err)
-	}
+	sprite := assets.MustLoadSprite("demos/animation/assets/explosion")
 
 	// Load the named animation from explosion.explode.animation (and optional .animation.color).
 	anim, err := sprite.LoadAnimation("explode")

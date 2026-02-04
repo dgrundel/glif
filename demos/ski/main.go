@@ -110,13 +110,6 @@ type SkiGame struct {
 }
 
 func NewSkiGame() *SkiGame {
-	load := func(name string) *render.Sprite {
-		sprite, err := assets.LoadSprite("demos/ski/assets/" + name)
-		if err != nil {
-			log.Fatal(err)
-		}
-		return sprite
-	}
 	pal := palette.MustLoad("demos/ski/assets/default.palette")
 	uiStyle := pal.MustStyle('x')
 	alertStyle := pal.MustStyle('e')
@@ -132,15 +125,15 @@ func NewSkiGame() *SkiGame {
 			"restart":     "key:enter",
 			"restart_alt": " ",
 		},
-		skiDown:    load("ski_down"),
-		skiLeft:    load("ski_left"),
-		skiRight:   load("ski_right"),
-		splash:     load("splash"),
-		flagLeft:   load("flag_left"),
-		flagRight:  load("flag_right"),
-		tree:       load("trees"),
-		rough:      load("snow_rough"),
-		snow:       load("snow"),
+		skiDown:    assets.MustLoadSprite("demos/ski/assets/ski_down"),
+		skiLeft:    assets.MustLoadSprite("demos/ski/assets/ski_left"),
+		skiRight:   assets.MustLoadSprite("demos/ski/assets/ski_right"),
+		splash:     assets.MustLoadSprite("demos/ski/assets/splash"),
+		flagLeft:   assets.MustLoadSprite("demos/ski/assets/flag_left"),
+		flagRight:  assets.MustLoadSprite("demos/ski/assets/flag_right"),
+		tree:       assets.MustLoadSprite("demos/ski/assets/trees"),
+		rough:      assets.MustLoadSprite("demos/ski/assets/snow_rough"),
+		snow:       assets.MustLoadSprite("demos/ski/assets/snow"),
 		uiStyle:    uiStyle,
 		alertStyle: alertStyle,
 		speed:      initialSpeed,

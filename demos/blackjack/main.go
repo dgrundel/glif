@@ -56,10 +56,6 @@ type Card struct {
 }
 
 func NewBlackjack() *Blackjack {
-	splash, err := assets.LoadSprite("demos/blackjack/assets/splash")
-	if err != nil {
-		log.Fatal(err)
-	}
 	pal, err := palette.Load("demos/blackjack/assets/default.palette")
 	if err != nil {
 		log.Fatal(err)
@@ -90,9 +86,9 @@ func NewBlackjack() *Blackjack {
 			"quit":     "key:esc",
 			"quit_alt": "key:ctrl+c",
 		},
-		splash:  splash,
+		splash:  assets.MustLoadSprite("demos/blackjack/assets/splash"),
 		cards:   loadCardSprites(),
-		back:    loadSprite("card_back"),
+		back:    assets.MustLoadSprite("demos/blackjack/assets/card_back"),
 		uiText:  uiText,
 		uiRed:   uiRed,
 		uiBlack: uiBlack,
@@ -393,21 +389,13 @@ func padRight(s string, w int) string {
 func loadCardSprites() map[rune]*render.Sprite {
 	sprites := map[rune]*render.Sprite{}
 	load := func(suit rune, base string) {
-		sprites[suit] = loadSprite(base)
+		sprites[suit] = assets.MustLoadSprite(filepath.Join("demos/blackjack/assets", base))
 	}
 	load('♠', "card_spades")
 	load('♣', "card_clubs")
 	load('♥', "card_hearts")
 	load('♦', "card_diamonds")
 	return sprites
-}
-
-func loadSprite(base string) *render.Sprite {
-	sprite, err := assets.LoadSprite(filepath.Join("demos/blackjack/assets", base))
-	if err != nil {
-		log.Fatal(err)
-	}
-	return sprite
 }
 
 func (b *Blackjack) layoutOffsets(r *render.Renderer, dealerTotal, playerTotal int) (int, int) {

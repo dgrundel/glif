@@ -41,8 +41,8 @@ func NewCollisionDemo() *CollisionDemo {
 			"quit":      "key:esc",
 			"quit_alt":  "key:ctrl+c",
 		},
-		player:    mustSprite("demos/collision/assets/player"),
-		block:     mustSprite("demos/collision/assets/block"),
+		player:    assets.MustLoadSprite("demos/collision/assets/player"),
+		block:     assets.MustLoadSprite("demos/collision/assets/block"),
 		textStyle: pal.MustStyle('x'),
 		okStyle:   pal.MustStyle('g'),
 		noStyle:   pal.MustStyle('r'),
@@ -108,14 +108,6 @@ func (d *CollisionDemo) ClearStyle() grid.Style {
 
 func (d *CollisionDemo) ShouldQuit() bool {
 	return d.quit
-}
-
-func mustSprite(base string) *render.Sprite {
-	sprite, err := assets.LoadSprite(base)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return sprite
 }
 
 func max(a, b int) int {
