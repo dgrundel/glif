@@ -164,6 +164,10 @@ func (e *Engine) Run(game Game) error {
 				e.Frame.Resize(w, h)
 				e.Renderer.SetFrame(e.Frame)
 				e.Screen.Clear()
+				if cs, ok := game.(ClearStyleProvider); ok {
+					e.Frame.Clear.Style = cs.ClearStyle()
+					e.Frame.ClearAll()
+				}
 				game.Resize(w, h)
 			default:
 				e.Input.HandleEvent(ev)

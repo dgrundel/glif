@@ -4,7 +4,7 @@ This captures items from `chat.md` that are not implemented yet, plus areas wher
 
 ## Not implemented yet
 
--- **Camera / world-to-screen transform**
+- **Camera / world-to-screen transform**
   - `camera` package exists, but it isn't wired as a standard world-to-screen projection layer.
   - Need consistent world space + camera viewport + projection/clipping across demos.
 
@@ -12,11 +12,8 @@ This captures items from `chat.md` that are not implemented yet, plus areas wher
   - Rendering is direct (ECS draw with Z sort).
   - No explicit render command queue or command batching.
 
--- **Tile map collision layers**
+- **Tile map collision layers**
   - Tile maps exist, but there is no collision/grid layer support yet.
-
--- **Action mapping layer in engine**
-  - Action maps are used in demos, but there is no centralized engine layer.
 
 - **Terminal UI extras**
   - Alt-screen/cursor hide were mentioned, but not explicitly implemented.

@@ -78,7 +78,7 @@ func main() {
 
 ## Sprite assets
 
-Masked sprites use three files with a shared base name:
+Masked sprites use files with a shared base name:
 
 - `<name>.sprite`
 - `<name>.color`
@@ -86,7 +86,7 @@ Masked sprites use three files with a shared base name:
 - `<name>.collision` (optional)
 
 If `<name>.palette` is missing, `default.palette` in the same folder is used.
-If `<name>.collision` is missing, the sprite has no collision mask. Any non-space character in `.collision` is treated as collidable.
+If `<name>.collision` is missing, the sprite has no collision mask. Space (` `) and dot (`.`) characters are treated as non-collidable. All other characters indicate collidable.
 
 Load with:
 
@@ -200,18 +200,7 @@ r.VLine(x, y, length, style)
 
 ## Input
 
-Input is delivered as per-frame state with `Pressed` and `Held` maps. Use an action map to keep key bindings out of game logic:
-
-```
-binds := input.ActionMap{
-	"left":  "key:left",
-	"right": "key:right",
-	"quit":  "key:esc",
-}
-
-if state.Pressed[binds["quit"]] { ... }
-if state.Held[binds["left"]] { ... }
-```
+Input is delivered as per-frame state with `Pressed` and `Held` maps. Use an action map to keep key bindings out of game logic.
 
 The engine can also pull action maps and push action state each frame:
 
