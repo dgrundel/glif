@@ -143,7 +143,11 @@ func (w *World) Draw(r *render.Renderer) {
 		if item.tile != nil {
 			x := item.pos.X
 			y := item.pos.Y
-			item.tile.Map.Draw(r, x, y, w.Camera)
+			rc := r
+			if w.Camera != nil {
+				rc = r.WithCamera(w.Camera)
+			}
+			item.tile.Map.Draw(rc, x, y)
 		}
 	}
 }

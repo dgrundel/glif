@@ -70,7 +70,7 @@ func (m *Map) WorldBounds() camera.Bounds {
 	}
 }
 
-func (m *Map) Draw(r *render.Renderer, worldX, worldY float64, cam camera.Camera) {
+func (m *Map) Draw(r *render.Renderer, worldX, worldY float64) {
 	if m == nil || r == nil {
 		return
 	}
@@ -86,12 +86,6 @@ func (m *Map) Draw(r *render.Renderer, worldX, worldY float64, cam camera.Camera
 			}
 			wx := worldX + float64(tx*m.TileW)
 			wy := worldY + float64(ty*m.TileH)
-			if cam != nil {
-				if !cam.Visible(wx, wy, m.TileW, m.TileH) {
-					continue
-				}
-				wx, wy = cam.WorldToScreen(wx, wy)
-			}
 			r.DrawSprite(int(math.Floor(wx)), int(math.Floor(wy)), sprite)
 		}
 	}
