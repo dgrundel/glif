@@ -1,6 +1,8 @@
 package tilemap
 
 import (
+	"math"
+
 	"github.com/dgrundel/glif/camera"
 	"github.com/dgrundel/glif/render"
 )
@@ -56,7 +58,7 @@ func (m *Map) At(x, y int) int {
 	return m.Tiles[y*m.W+x]
 }
 
-func (m *Map) Draw(r *render.Renderer, worldX, worldY int, cam camera.Camera) {
+func (m *Map) Draw(r *render.Renderer, worldX, worldY float64, cam camera.Camera) {
 	if m == nil || r == nil {
 		return
 	}
@@ -70,15 +72,15 @@ func (m *Map) Draw(r *render.Renderer, worldX, worldY int, cam camera.Camera) {
 			if sprite == nil {
 				continue
 			}
-			wx := worldX + tx*m.TileW
-			wy := worldY + ty*m.TileH
+			wx := worldX + float64(tx*m.TileW)
+			wy := worldY + float64(ty*m.TileH)
 			if cam != nil {
 				if !cam.Visible(wx, wy, m.TileW, m.TileH) {
 					continue
 				}
 				wx, wy = cam.WorldToScreen(wx, wy)
 			}
-			r.DrawSprite(wx, wy, sprite)
+			r.DrawSprite(int(math.Floor(wx)), int(math.Floor(wy)), sprite)
 		}
 	}
 }

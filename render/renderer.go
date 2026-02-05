@@ -1,6 +1,8 @@
 package render
 
 import (
+	"math"
+
 	"github.com/dgrundel/glif/camera"
 	"github.com/dgrundel/glif/grid"
 )
@@ -42,10 +44,12 @@ func (r *Renderer) DrawSprite(x, y int, sprite *Sprite) {
 		return
 	}
 	if r.camera != nil {
-		if !r.camera.Visible(x, y, sprite.W, sprite.H) {
+		if !r.camera.Visible(float64(x), float64(y), sprite.W, sprite.H) {
 			return
 		}
-		x, y = r.camera.WorldToScreen(x, y)
+		wx, wy := r.camera.WorldToScreen(float64(x), float64(y))
+		x = int(math.Floor(wx))
+		y = int(math.Floor(wy))
 	}
 	for row := 0; row < sprite.H; row++ {
 		for col := 0; col < sprite.W; col++ {
@@ -66,7 +70,9 @@ func (r *Renderer) DrawText(x, y int, text string, style grid.Style) {
 		return
 	}
 	if r.camera != nil {
-		x, y = r.camera.WorldToScreen(x, y)
+		wx, wy := r.camera.WorldToScreen(float64(x), float64(y))
+		x = int(math.Floor(wx))
+		y = int(math.Floor(wy))
 	}
 	cx := x
 	for _, ch := range text {

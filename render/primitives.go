@@ -1,6 +1,8 @@
 package render
 
 import (
+	"math"
+
 	"github.com/dgrundel/glif/grid"
 	"github.com/gdamore/tcell/v3"
 )
@@ -27,10 +29,12 @@ func (r *Renderer) Rect(x, y, w, h int, style grid.Style, opts ...RectOptions) {
 		return
 	}
 	if r.camera != nil {
-		if !r.camera.Visible(x, y, w, h) {
+		if !r.camera.Visible(float64(x), float64(y), w, h) {
 			return
 		}
-		x, y = r.camera.WorldToScreen(x, y)
+		wx, wy := r.camera.WorldToScreen(float64(x), float64(y))
+		x = int(math.Floor(wx))
+		y = int(math.Floor(wy))
 	}
 	opt := rectDefaults()
 	if len(opts) > 0 {
@@ -73,10 +77,12 @@ func (r *Renderer) HLine(x, y, length int, style grid.Style, opts ...LineOptions
 		return
 	}
 	if r.camera != nil {
-		if !r.camera.Visible(x, y, length, 1) {
+		if !r.camera.Visible(float64(x), float64(y), length, 1) {
 			return
 		}
-		x, y = r.camera.WorldToScreen(x, y)
+		wx, wy := r.camera.WorldToScreen(float64(x), float64(y))
+		x = int(math.Floor(wx))
+		y = int(math.Floor(wy))
 	}
 	ch := tcell.RuneHLine
 	if len(opts) > 0 && opts[0].Rune != 0 {
@@ -93,10 +99,12 @@ func (r *Renderer) VLine(x, y, length int, style grid.Style, opts ...LineOptions
 		return
 	}
 	if r.camera != nil {
-		if !r.camera.Visible(x, y, 1, length) {
+		if !r.camera.Visible(float64(x), float64(y), 1, length) {
 			return
 		}
-		x, y = r.camera.WorldToScreen(x, y)
+		wx, wy := r.camera.WorldToScreen(float64(x), float64(y))
+		x = int(math.Floor(wx))
+		y = int(math.Floor(wy))
 	}
 	ch := tcell.RuneVLine
 	if len(opts) > 0 && opts[0].Rune != 0 {

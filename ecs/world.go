@@ -129,20 +129,20 @@ func (w *World) Draw(r *render.Renderer) {
 	})
 	for _, item := range items {
 		if item.sprite != nil {
-			x := int(math.Floor(item.pos.X))
-			y := int(math.Floor(item.pos.Y))
+			x := item.pos.X
+			y := item.pos.Y
 			if w.Camera != nil {
 				if !w.Camera.Visible(x, y, item.sprite.Sprite.W, item.sprite.Sprite.H) {
 					continue
 				}
 				x, y = w.Camera.WorldToScreen(x, y)
 			}
-			r.DrawSprite(x, y, item.sprite.Sprite)
+			r.DrawSprite(int(math.Floor(x)), int(math.Floor(y)), item.sprite.Sprite)
 			continue
 		}
 		if item.tile != nil {
-			x := int(math.Floor(item.pos.X))
-			y := int(math.Floor(item.pos.Y))
+			x := item.pos.X
+			y := item.pos.Y
 			item.tile.Map.Draw(r, x, y, w.Camera)
 		}
 	}

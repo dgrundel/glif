@@ -16,7 +16,7 @@ import (
 
 type Demo struct {
 	world   *ecs.World
-	cam     *camera.Camera
+	cam     *camera.Basic
 	tile    *tilemap.Map
 	binds   input.ActionMap
 	actions input.ActionState
@@ -35,7 +35,7 @@ func NewDemo() *Demo {
 		log.Fatal(err)
 	}
 	world := ecs.NewWorld()
-	cam := &camera.Camera{}
+	cam := camera.NewBasic(0, 0, 0, 0)
 	world.Camera = cam
 
 	duck := assets.MustLoadSprite("demos/world/assets/duck")
@@ -57,8 +57,7 @@ func NewDemo() *Demo {
 	world.AddTileMap(tmEntity, tm, -1)
 
 	world.OnResize = func(w, h int) {
-		cam.ViewW = w
-		cam.ViewH = h
+		cam.SetViewport(w, h)
 		pos := world.Positions[player]
 		if pos != nil && pos.X == 0 && pos.Y == 0 {
 			pos.X = float64((w / 2) - 1)
@@ -171,11 +170,11 @@ func (d *Demo) applyMovement() {
 }
 
 func (d *Demo) clampCamera() {
-	if d.tile == nil || d.cam.ViewW <= 0 || d.cam.ViewH <= 0 {
+	if d.tile == nil || d.cam.W <= 0 || d.cam.H <= 0 {
 		return
 	}
-	maxX := float64(d.tile.W*d.tile.TileW - d.cam.ViewW)
-	maxY := float64(d.tile.H*d.tile.TileH - d.cam.ViewH)
+	maxX := float64(d.tile.W*d.tile.TileW - d.cam.W)
+	maxY := float64(d.tile.H*d.tile.TileH - d.cam.H)
 	if maxX < 0 {
 		maxX = 0
 	}
