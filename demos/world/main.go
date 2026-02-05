@@ -98,19 +98,24 @@ func (d *Demo) Update(dt float64) {
 
 func (d *Demo) updateCamera(dt float64) {
 	speed := 12.0
+	dx := 0.0
+	dy := 0.0
 	if d.actions.Held["pan_left"] {
-		d.cam.X -= speed * dt
+		dx -= 1
 	}
 	if d.actions.Held["pan_right"] {
-		d.cam.X += speed * dt
+		dx += 1
 	}
 	if d.actions.Held["pan_up"] {
-		d.cam.Y -= speed * dt
+		dy -= 1
 	}
 	if d.actions.Held["pan_down"] {
-		d.cam.Y += speed * dt
+		dy += 1
 	}
-	d.clampCamera()
+	d.cam.Pan(dx, dy, speed, dt)
+	if d.tile != nil {
+		d.cam.ClampTo(d.tile.WorldBounds())
+	}
 }
 
 func (d *Demo) Draw(r *render.Renderer) {
@@ -166,32 +171,6 @@ func (d *Demo) applyMovement() {
 	if vel != nil {
 		vel.DX = dx * speed
 		vel.DY = dy * speed
-	}
-}
-
-func (d *Demo) clampCamera() {
-	if d.tile == nil || d.cam.W <= 0 || d.cam.H <= 0 {
-		return
-	}
-	maxX := float64(d.tile.W*d.tile.TileW - d.cam.W)
-	maxY := float64(d.tile.H*d.tile.TileH - d.cam.H)
-	if maxX < 0 {
-		maxX = 0
-	}
-	if maxY < 0 {
-		maxY = 0
-	}
-	if d.cam.X < 0 {
-		d.cam.X = 0
-	}
-	if d.cam.Y < 0 {
-		d.cam.Y = 0
-	}
-	if d.cam.X > maxX {
-		d.cam.X = maxX
-	}
-	if d.cam.Y > maxY {
-		d.cam.Y = maxY
 	}
 }
 

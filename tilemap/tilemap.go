@@ -58,6 +58,18 @@ func (m *Map) At(x, y int) int {
 	return m.Tiles[y*m.W+x]
 }
 
+func (m *Map) WorldBounds() camera.Bounds {
+	if m == nil {
+		return camera.Bounds{}
+	}
+	return camera.Bounds{
+		X: 0,
+		Y: 0,
+		W: float64(m.W * m.TileW),
+		H: float64(m.H * m.TileH),
+	}
+}
+
 func (m *Map) Draw(r *render.Renderer, worldX, worldY float64, cam camera.Camera) {
 	if m == nil || r == nil {
 		return
