@@ -80,7 +80,17 @@ func resolvePalettePath(basePath string) string {
 		return candidate
 	}
 	dir := filepath.Dir(basePath)
-	return filepath.Join(dir, "default.palette")
+	for {
+		candidate = filepath.Join(dir, "default.palette")
+		if fileExists(candidate) {
+			return candidate
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return candidate
+		}
+		dir = parent
+	}
 }
 
 func fileExists(path string) bool {

@@ -86,6 +86,7 @@ Masked sprites use files with a shared base name:
 - `<name>.collision` (optional)
 
 If `<name>.palette` is missing, `default.palette` in the same folder is used.
+If `default.palette` is not found there, parent folders are checked recursively.
 If `<name>.collision` is missing, the sprite has no collision mask. Space (` `) and dot (`.`) characters are treated as non-collidable. All other characters indicate collidable.
 
 Load with:
