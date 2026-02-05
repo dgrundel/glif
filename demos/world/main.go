@@ -35,7 +35,7 @@ func NewDemo() *Demo {
 		log.Fatal(err)
 	}
 	world := ecs.NewWorld()
-	cam := camera.NewBasic(0, 0, 0, 0)
+	cam := camera.NewBasic()
 	world.Camera = cam
 
 	duck := assets.MustLoadSprite("demos/world/assets/duck")

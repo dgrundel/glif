@@ -1,21 +1,21 @@
 # Tilemap Camera Integration
 
 ## Summary
-Refactor `tilemap.Map.Draw` to use the proposed `camera.Camera` interface and integer world coordinates. This removes duplicated projection math, makes tilemaps first‑class camera citizens, and ensures consistent culling across the engine.
+Align tilemap rendering with the renderer‑centric camera model. Tilemaps should draw in world space and let the renderer apply camera transforms via `r.WithCamera(cam)`. This removes duplicated projection logic from `tilemap` and keeps the camera contract centralized in `render`.
 
 ## Why This Is Useful
-- **Single source of truth** for world‑to‑screen math (the camera).
-- **Consistency** with the renderer and camera proposal (same interface, same semantics).
-- **Simpler API** for game code: pass world coords as ints; no float math.
+- **Single source of truth** for world‑to‑screen math (the renderer + camera).
+- **Consistency** with the renderer camera model (world‑space draw via `WithCamera`).
+- **Simpler API** for tilemaps: no camera parameter, no projection logic.
 
 ## Feature Overview
-- Change the tilemap draw signature to accept a `camera.Camera` interface (not a concrete type).
-- Move visible bounds calculations to the camera where possible.
-- Keep tilemap rendering in world space, with camera handling projection and clipping.
+- Remove camera/projection logic from `tilemap`.
+- Tilemap draws in world space; the renderer view handles camera transforms.
+- Optional: add culling helpers that take a camera to skip off‑screen tiles, but keep them separate from draw.
 
 ## Fit With Existing Architecture
-- The camera proposal adds a `camera.Camera` interface with `WorldToScreen` and `Visible`.
-- The renderer will optionally apply the camera transform; tilemap should follow the same contract.
+- The renderer applies camera transforms via `WithCamera`.
+- Tilemap remains a world‑space data structure and doesn’t own camera logic.
 
 ## Proposed API (exhaustive)
 ### tilemap package
@@ -43,12 +43,8 @@ func (m *Map) Set(x, y, id int)
 func (m *Map) At(x, y int) int
 
 // Draw renders the map in world space at the given origin.
-// If cam is nil, coordinates are treated as screen space.
-func (m *Map) Draw(r *render.Renderer, worldX, worldY int, cam camera.Camera)
-
-// VisibleBounds returns the inclusive tile bounds visible in the camera viewport.
-// If cam is nil, returns the full map bounds.
-func (m *Map) VisibleBounds(worldX, worldY int, cam camera.Camera) (startX, startY, endX, endY int)
+// The renderer is responsible for camera transforms.
+func (m *Map) Draw(r *render.Renderer, worldX, worldY float64)
 ```
 
 ### tilemap package (loading)
@@ -62,33 +58,29 @@ type TilesetMapping struct {
 func LoadFromFiles(mapPath, tilesPath string) (*Map, error)
 ```
 
-### camera package (expected usage)
+### render package (expected usage)
 ```go
-// Visible checks whether a world-space rect intersects the viewport.
-Visible(x, y, w, h int) bool
-
-// WorldToScreen converts world-space coords to screen-space coords.
-WorldToScreen(x, y int) (sx, sy int)
+// WithCamera returns a renderer view that applies the camera transform.
+func (r *Renderer) WithCamera(cam camera.Camera) *Renderer
 ```
 
 ## Implementation Plan
-1. **API change**: update `Map.Draw` signature to use `int` world coords and `camera.Camera` interface.
-2. **Projection**: compute tile world coords as ints; use `cam.WorldToScreen` if provided.
-3. **Culling**: replace internal float‑based `visibleBounds` with camera‑derived bounds or simpler checks.
-4. **Demo updates**: update `demos/world` to use the new signature.
+1. **API change**: remove camera parameter from `Map.Draw` and keep world coords as float64.
+2. **Projection**: delete camera usage from tilemap; rely on `r.WithCamera(cam)` at call sites.
+3. **Optional culling**: add a separate helper if we want camera‑based bounds later.
+4. **Demo updates**: update `demos/world` to use `r.WithCamera(cam)` before drawing the map.
 
 ## Alternatives Considered
-1. **Keep internal float math**: minimal change but duplicates camera logic and risks inconsistencies.
-2. **Let renderer handle camera only**: draw in world coords and rely on renderer to project. This is viable if the renderer applies camera transforms uniformly.
-3. **Separate map renderer**: a dedicated tilemap renderer that owns its own camera logic; heavier and redundant.
+1. **Keep camera parameter on tilemap**: duplicates projection logic and can drift from renderer behavior.
+2. **Separate map renderer**: a dedicated tilemap renderer that owns its own camera logic; heavier and redundant.
 
 ## Risks / Tradeoffs
 - API change will require updating any demo code using tilemaps.
-- Camera visibility math must be correct for tiles; off‑by‑one issues can cause edge tiles to flicker.
+- Tilemap culling becomes optional/explicit; without it, large maps may be slower to draw.
 
 ## Testing Plan
-- Add a manual regression test in `demos/world` for smooth panning without column “sticking.”
-- Unit test for visible bounds of tiles at various camera offsets (optional).
+- Manual regression test in `demos/world` for smooth panning without column “sticking.”
+- Unit test for `Map.Draw` world‑space positioning (optional).
 
 ## Appendix: Minimal Demo
 ```go
@@ -119,21 +111,25 @@ type Game struct {
 
 func (g *Game) Update(dt float64) {
 	if g.actions.Held[ActionLeft] {
-		g.cam.X--
+		g.cam.Move(-1, 0)
 	}
 	if g.actions.Held[ActionRight] {
-		g.cam.X++
+		g.cam.Move(1, 0)
 	}
 	if g.actions.Held[ActionUp] {
-		g.cam.Y--
+		g.cam.Move(0, -1)
 	}
 	if g.actions.Held[ActionDown] {
-		g.cam.Y++
+		g.cam.Move(0, 1)
+	}
+	if g.m != nil {
+		g.cam.ClampTo(g.m.WorldBounds())
 	}
 }
 
 func (g *Game) Draw(r *render.Renderer) {
-	g.m.Draw(r, 0, 0, g.cam)
+	rc := r.WithCamera(g.cam)
+	g.m.Draw(rc, 0, 0)
 }
 
 func (g *Game) Resize(w, h int) { g.cam.SetViewport(w, h) }
@@ -156,7 +152,7 @@ func main() {
 	}
 	game := &Game{
 		m:   m,
-		cam: camera.NewBasic(0, 0, 0, 0),
+		cam: camera.NewBasic(),
 	}
 	eng, err := engine.New(game, 0)
 	if err != nil {

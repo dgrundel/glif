@@ -144,7 +144,7 @@ func main() {
 
 	game := &Game{
 		layers: layers,
-		cam:    camera.NewBasic(0, 0, 0, 0),
+		cam:    camera.NewBasic(),
 	}
 	eng, err := engine.New(game, 0)
 	if err != nil {

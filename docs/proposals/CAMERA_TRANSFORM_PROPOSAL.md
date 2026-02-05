@@ -42,7 +42,7 @@ type Basic struct {
 }
 
 // NewBasic creates a camera with the given top-left origin and viewport size.
-func NewBasic(x, y, w, h int) *Basic
+func NewBasic() *Basic
 
 // Set sets camera origin directly.
 func (c *Basic) Set(x, y int)
@@ -167,7 +167,7 @@ func main() {
 	sprite := assets.MustLoadSprite("path/to/sprite")
 	game := &Game{
 		sprite: sprite,
-		cam:    camera.NewBasic(0, 0, 0, 0),
+		cam:    camera.NewBasic(),
 	}
 	eng, err := engine.New(game, 0)
 	if err != nil {

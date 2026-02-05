@@ -19,8 +19,8 @@ type Basic struct {
 	h int
 }
 
-func NewBasic(x, y float64, w, h int) *Basic {
-	return &Basic{x: x, y: y, w: w, h: h}
+func NewBasic() *Basic {
+	return &Basic{}
 }
 
 func (c *Basic) Set(x, y float64) {

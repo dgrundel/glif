@@ -44,7 +44,7 @@ type Basic struct {
 	H int
 }
 
-func NewBasic(x, y float64, w, h int) *Basic
+func NewBasic() *Basic
 func (c *Basic) Set(x, y float64)
 func (c *Basic) Move(dx, dy float64)
 func (c *Basic) SetViewport(w, h int)
