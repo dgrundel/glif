@@ -35,6 +35,10 @@ func (r *Renderer) WithCamera(cam camera.Camera) *Renderer {
 	return &Renderer{Frame: r.Frame, camera: cam}
 }
 
+func (r *Renderer) Screen() *Renderer {
+	return r.WithCamera(nil)
+}
+
 func (r *Renderer) Clear() {
 	r.Frame.ClearAll()
 }

@@ -153,6 +153,7 @@ func (e *Engine) Run(game Game) error {
 			}
 
 			e.Renderer.Clear()
+			e.Renderer.SetCamera(nil)
 			game.Draw(e.Renderer)
 			e.drawFPSOverlay()
 			e.Screen.Present(e.Renderer.Frame)
