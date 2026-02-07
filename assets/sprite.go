@@ -34,7 +34,7 @@ func LoadSprite(basePath string) (*render.Sprite, error) {
 	if err != nil {
 		return nil, err
 	}
-	widthMask, cellW, err := parseWidthMask(widthLines, hasWidth, spriteLines, sh)
+	widthMask, cellW, err := parseWidthMask(widthLines, hasWidth, spriteLines, sw, sh)
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +52,7 @@ func LoadSprite(basePath string) (*render.Sprite, error) {
 	cells := make([]grid.Cell, cellW*sh)
 	for y := 0; y < sh; y++ {
 		col := 0
-		rowLen := len(spriteLines[y])
-		for x := 0; x < rowLen; x++ {
+		for x := 0; x < sw; x++ {
 			spr := runeAt(spriteLines[y], x)
 			mask := runeAt(maskLines[y], x)
 			width := 1
@@ -180,8 +179,7 @@ func loadCollisionMask(basePath string, spriteLines [][]rune, widthMask [][]int,
 	cells := make([]bool, cellW*sh)
 	for y := 0; y < sh; y++ {
 		col := 0
-		rowLen := len(spriteLines[y])
-		for x := 0; x < rowLen; x++ {
+		for x := 0; x < sw; x++ {
 			ch := runeAt(lines[y], x)
 			width := 1
 			if widthMask != nil && x < len(widthMask[y]) {
@@ -214,15 +212,9 @@ func readOptionalLines(path string) ([]string, bool, error) {
 	return lines, true, nil
 }
 
-func parseWidthMask(lines []string, hasWidth bool, spriteLines [][]rune, sh int) ([][]int, int, error) {
+func parseWidthMask(lines []string, hasWidth bool, spriteLines [][]rune, sw, sh int) ([][]int, int, error) {
 	if !hasWidth {
-		maxW := 0
-		for _, row := range spriteLines {
-			if len(row) > maxW {
-				maxW = len(row)
-			}
-		}
-		return nil, maxW, nil
+		return nil, sw, nil
 	}
 	widthLines := toRunesLines(lines)
 	if len(widthLines) != sh {
@@ -244,7 +236,7 @@ func parseWidthMask(lines []string, hasWidth bool, spriteLines [][]rune, sh int)
 			out[y][x] = w
 			rowWidth += w
 		}
-		rowWidth += (len(spriteLines[y]) - len(widthLines[y]))
+		rowWidth += (sw - len(widthLines[y]))
 		if rowWidth > maxWidth {
 			maxWidth = rowWidth
 		}
