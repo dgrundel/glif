@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/bmatcuk/doublestar/v4"
 )
 
 func main() {
@@ -24,7 +26,7 @@ func main() {
 	flag.BoolVar(&writeColl, "collision", false, "write .collision output")
 	flag.Parse()
 
-	if flag.NArg() != 1 {
+	if flag.NArg() < 1 {
 		flag.Usage()
 		os.Exit(2)
 	}
@@ -38,11 +40,68 @@ func main() {
 		os.Exit(2)
 	}
 
-	spritePath := flag.Arg(0)
+	paths, err := expandArgs(flag.Args())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if len(paths) == 0 {
+		fmt.Fprintln(os.Stderr, "no sprites found in provided inputs")
+		os.Exit(2)
+	}
+
+	for _, spritePath := range paths {
+		info, err := os.Stat(spritePath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "stat %s: %v\n", spritePath, err)
+			os.Exit(1)
+		}
+		if info.IsDir() {
+			fmt.Fprintf(os.Stderr, "%s is a directory; provide a sprite file or glob\n", spritePath)
+			os.Exit(2)
+		}
+		if err := writeMask(spritePath, fill, transparent, mappings, writeColor, writeColl); err != nil {
+			fmt.Fprintf(os.Stderr, "genmask %s: %v\n", spritePath, err)
+			os.Exit(1)
+		}
+	}
+}
+
+func expandArgs(args []string) ([]string, error) {
+	paths := make([]string, 0, len(args))
+	for _, arg := range args {
+		if hasGlobMeta(arg) {
+			fs := os.DirFS(".")
+			pattern := arg
+			if filepath.IsAbs(arg) {
+				fs = os.DirFS("/")
+				pattern = strings.TrimPrefix(arg, "/")
+			}
+			matches, err := doublestar.Glob(fs, pattern)
+			if err != nil {
+				return nil, fmt.Errorf("glob %q: %w", arg, err)
+			}
+			if filepath.IsAbs(arg) {
+				for i, match := range matches {
+					matches[i] = "/" + match
+				}
+			}
+			paths = append(paths, matches...)
+			continue
+		}
+		paths = append(paths, arg)
+	}
+	return paths, nil
+}
+
+func hasGlobMeta(s string) bool {
+	return strings.ContainsAny(s, "*?[") || strings.Contains(s, "{") || strings.Contains(s, "}")
+}
+
+func writeMask(spritePath, fill, transparent string, mappings mapSpec, writeColor, writeColl bool) error {
 	data, err := os.ReadFile(spritePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "read sprite: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("read sprite: %v", err)
 	}
 
 	lines := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
@@ -94,17 +153,16 @@ func main() {
 			outPath = base + ".animation.color"
 		}
 		if err := os.WriteFile(outPath, []byte(out), 0o644); err != nil {
-			fmt.Fprintf(os.Stderr, "write color: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("write color: %v", err)
 		}
 	}
 	if writeColl {
 		outPath := base + ".collision"
 		if err := os.WriteFile(outPath, []byte(out), 0o644); err != nil {
-			fmt.Fprintf(os.Stderr, "write collision: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("write collision: %v", err)
 		}
 	}
+	return nil
 }
 
 type mapSpec map[rune]rune
