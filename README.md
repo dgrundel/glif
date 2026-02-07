@@ -276,4 +276,5 @@ Preview one or more masked sprites in a grid with filenames and scroll using the
 ```
 go run ./utils/spritepreview path/to/sprite1 path/to/sprite2
 go run ./utils/spritepreview path/to/folder
+go run ./utils/spritepreview -r path/to/folder
 ```

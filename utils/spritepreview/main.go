@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -219,33 +220,62 @@ func loadItem(base, label string) PreviewItem {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: spritepreview path/to/sprite_or_folder [more sprites_or_folders...]")
+	recursive := flag.Bool("r", false, "recursively scan folders for .sprite files")
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "usage: spritepreview [-r] path/to/sprite_or_folder [more sprites_or_folders...]")
 		os.Exit(2)
 	}
 
-	items := make([]PreviewItem, 0, len(os.Args)-1)
-	for _, arg := range os.Args[1:] {
+	items := make([]PreviewItem, 0, len(args))
+	for _, arg := range args {
 		info, err := os.Stat(arg)
 		if err == nil && info.IsDir() {
-			entries, err := os.ReadDir(arg)
-			if err != nil {
-				log.Fatalf("read dir %s: %v", arg, err)
-			}
-			names := make([]string, 0, len(entries))
-			for _, entry := range entries {
-				if entry.IsDir() {
-					continue
+			if *recursive {
+				paths := make([]string, 0)
+				err := filepath.WalkDir(arg, func(path string, d os.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
+					if d.IsDir() {
+						return nil
+					}
+					if strings.HasSuffix(d.Name(), ".sprite") {
+						paths = append(paths, path)
+					}
+					return nil
+				})
+				if err != nil {
+					log.Fatalf("walk dir %s: %v", arg, err)
 				}
-				name := entry.Name()
-				if strings.HasSuffix(name, ".sprite") {
-					names = append(names, name)
+				sort.Strings(paths)
+				for _, path := range paths {
+					base := strings.TrimSuffix(path, ".sprite")
+					label := path
+					items = append(items, loadItem(base, label))
 				}
-			}
-			sort.Strings(names)
-			for _, name := range names {
-				base := filepath.Join(arg, strings.TrimSuffix(name, ".sprite"))
-				items = append(items, loadItem(base, name))
+			} else {
+				entries, err := os.ReadDir(arg)
+				if err != nil {
+					log.Fatalf("read dir %s: %v", arg, err)
+				}
+				names := make([]string, 0, len(entries))
+				for _, entry := range entries {
+					if entry.IsDir() {
+						continue
+					}
+					name := entry.Name()
+					if strings.HasSuffix(name, ".sprite") {
+						names = append(names, name)
+					}
+				}
+				sort.Strings(names)
+				for _, name := range names {
+					base := filepath.Join(arg, strings.TrimSuffix(name, ".sprite"))
+					items = append(items, loadItem(base, name))
+				}
 			}
 			continue
 		}
