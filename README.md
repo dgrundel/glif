@@ -84,10 +84,12 @@ Masked sprites use files with a shared base name:
 - `<name>.color`
 - `<name>.palette` (optional)
 - `<name>.collision` (optional)
+- `<name>.width` (optional)
 
 If `<name>.palette` is missing, `default.palette` in the same folder is used.
 If `default.palette` is not found there, parent folders are checked recursively.
 If `<name>.collision` is missing, the sprite has no collision mask. Space (` `) and dot (`.`) characters are treated as non-collidable. All other characters indicate collidable.
+If `<name>.width` is missing, all glyphs are treated as width 1.
 
 Load with:
 

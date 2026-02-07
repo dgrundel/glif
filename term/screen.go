@@ -72,6 +72,10 @@ func (s *Screen) Present(back *grid.Frame) {
 	}
 	for i := range back.Cells {
 		b := back.Cells[i]
+		if b.Skip {
+			s.front.Cells[i] = b
+			continue
+		}
 		if b == s.front.Cells[i] {
 			continue
 		}

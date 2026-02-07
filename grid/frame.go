@@ -19,6 +19,7 @@ func (s Style) ToTCell() tcell.Style {
 type Cell struct {
 	Ch    rune
 	Style Style
+	Skip  bool
 }
 
 type Frame struct {

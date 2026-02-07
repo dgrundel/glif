@@ -42,8 +42,30 @@ func (s *Sprite) LoadAnimation(name string) (*Animation, error) {
 	}
 	animLines := toRunesLines(animLinesRaw)
 	aw, ah := dims(animLines)
-	if aw != s.W {
-		return nil, fmt.Errorf("animation width differs: sprite=%d animation=%d", s.W, aw)
+
+	spriteLinesRaw, err := readLines(base + ".sprite")
+	if err != nil {
+		return nil, err
+	}
+	spriteLines := toRunesLines(spriteLinesRaw)
+	sw, sh := dims(spriteLines)
+	if sh != s.H {
+		return nil, fmt.Errorf("sprite height differs: sprite=%d file=%d", s.H, sh)
+	}
+	if aw != sw {
+		return nil, fmt.Errorf("animation width differs: sprite=%d animation=%d", sw, aw)
+	}
+
+	widthLinesRaw, hasWidth, err := readOptionalLines(base + ".width")
+	if err != nil {
+		return nil, err
+	}
+	widthMask, cellW, err := parseWidthMask(widthLinesRaw, hasWidth, spriteLines, sw, sh)
+	if err != nil {
+		return nil, err
+	}
+	if cellW != s.W {
+		return nil, fmt.Errorf("animation width differs: sprite=%d animation=%d", s.W, cellW)
 	}
 	if ah == 0 || ah%s.H != 0 {
 		return nil, fmt.Errorf("animation height must be multiple of sprite height: sprite=%d animation=%d", s.H, ah)
@@ -53,6 +75,10 @@ func (s *Sprite) LoadAnimation(name string) (*Animation, error) {
 	colorLines, err := loadAnimationColors(base, name, s.H, frameCount)
 	if err != nil {
 		return nil, err
+	}
+	cw, _ := dims(colorLines)
+	if cw != sw {
+		return nil, fmt.Errorf("animation color width differs: expected=%d got=%d", sw, cw)
 	}
 
 	pal, err := palette.Load(resolvePalettePath(base))
@@ -66,22 +92,41 @@ func (s *Sprite) LoadAnimation(name string) (*Animation, error) {
 		startY := frame * s.H
 		cells := make([]grid.Cell, s.W*s.H)
 		for y := 0; y < s.H; y++ {
-			for x := 0; x < s.W; x++ {
+			col := 0
+			rowLen := len(spriteLines[y])
+			for x := 0; x < rowLen; x++ {
 				spr := runeAt(animLines[startY+y], x)
 				mask := runeAt(colorLines[startY+y], x)
-				if mask == ' ' || mask == '.' {
-					cells[y*s.W+x] = grid.Cell{Ch: 0}
-					continue
+				width := 1
+				if hasWidth {
+					width = widthMask[y][x]
 				}
-				entry, err := pal.Entry(mask)
-				if err != nil {
-					return nil, err
+				visible := mask != ' ' && mask != '.'
+				var entry palette.Entry
+				if visible {
+					entry, err = pal.Entry(mask)
+					if err != nil {
+						return nil, err
+					}
+					if entry.Transparent {
+						visible = false
+					}
 				}
-				if entry.Transparent {
-					cells[y*s.W+x] = grid.Cell{Ch: 0}
-					continue
+				for i := 0; i < width; i++ {
+					idx := y*s.W + col
+					col++
+					if !visible {
+						continue
+					}
+					if i == 0 {
+						cells[idx] = grid.Cell{Ch: spr, Style: entry.Style}
+					} else {
+						cells[idx] = grid.Cell{Ch: 0, Style: entry.Style, Skip: true}
+					}
 				}
-				cells[y*s.W+x] = grid.Cell{Ch: spr, Style: entry.Style}
+			}
+			if hasWidth && col != s.W {
+				return nil, fmt.Errorf("animation width row %d expands to %d cells, expected %d", y+1, col, s.W)
 			}
 		}
 		frames = append(frames, &Sprite{
@@ -185,6 +230,17 @@ func readLines(path string) ([]string, error) {
 	return strings.Split(text, "\n"), nil
 }
 
+func readOptionalLines(path string) ([]string, bool, error) {
+	if !fileExists(path) {
+		return nil, false, nil
+	}
+	lines, err := readLines(path)
+	if err != nil {
+		return nil, false, err
+	}
+	return lines, true, nil
+}
+
 func toRunesLines(lines []string) [][]rune {
 	out := make([][]rune, len(lines))
 	for i, line := range lines {
@@ -208,4 +264,48 @@ func runeAt(line []rune, x int) rune {
 		return ' '
 	}
 	return line[x]
+}
+
+func parseWidthMask(lines []string, hasWidth bool, spriteLines [][]rune, sw, sh int) ([][]int, int, error) {
+	if !hasWidth {
+		return nil, sw, nil
+	}
+	widthLines := toRunesLines(lines)
+	if len(widthLines) != sh {
+		return nil, 0, fmt.Errorf("width mask height differs: sprite=%d width=%d", sh, len(widthLines))
+	}
+	out := make([][]int, sh)
+	expected := -1
+	for y := 0; y < sh; y++ {
+		if len(widthLines[y]) != len(spriteLines[y]) {
+			return nil, 0, fmt.Errorf("width mask row %d length differs: sprite=%d width=%d", y+1, len(spriteLines[y]), len(widthLines[y]))
+		}
+		out[y] = make([]int, len(widthLines[y]))
+		rowWidth := 0
+		for x, ch := range widthLines[y] {
+			w, err := parseWidth(ch)
+			if err != nil {
+				return nil, 0, fmt.Errorf("width mask row %d col %d: %v", y+1, x+1, err)
+			}
+			out[y][x] = w
+			rowWidth += w
+		}
+		if expected == -1 {
+			expected = rowWidth
+		} else if rowWidth != expected {
+			return nil, 0, fmt.Errorf("width mask row %d expands to %d cells, expected %d", y+1, rowWidth, expected)
+		}
+	}
+	return out, expected, nil
+}
+
+func parseWidth(ch rune) (int, error) {
+	switch ch {
+	case '1':
+		return 1, nil
+	case '2':
+		return 2, nil
+	default:
+		return 0, fmt.Errorf("invalid width %q (expected 1 or 2)", string(ch))
+	}
 }
