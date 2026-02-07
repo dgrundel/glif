@@ -52,12 +52,11 @@ func LoadSprite(basePath string) (*render.Sprite, error) {
 	cells := make([]grid.Cell, cellW*sh)
 	for y := 0; y < sh; y++ {
 		col := 0
-		row := spriteLines[y]
-		for x := 0; x < len(row); x++ {
-			spr := row[x]
+		for x := 0; x < sw; x++ {
+			spr := runeAt(spriteLines[y], x)
 			mask := runeAt(maskLines[y], x)
 			width := 1
-			if hasWidth {
+			if hasWidth && x < len(widthMask[y]) {
 				width = widthMask[y][x]
 			}
 
@@ -180,11 +179,10 @@ func loadCollisionMask(basePath string, spriteLines [][]rune, widthMask [][]int,
 	cells := make([]bool, cellW*sh)
 	for y := 0; y < sh; y++ {
 		col := 0
-		row := spriteLines[y]
-		for x := 0; x < len(row); x++ {
+		for x := 0; x < sw; x++ {
 			ch := runeAt(lines[y], x)
 			width := 1
-			if widthMask != nil {
+			if widthMask != nil && x < len(widthMask[y]) {
 				width = widthMask[y][x]
 			}
 			collides := ch != ' ' && ch != '.'
@@ -225,8 +223,8 @@ func parseWidthMask(lines []string, hasWidth bool, spriteLines [][]rune, sw, sh 
 	out := make([][]int, sh)
 	expected := -1
 	for y := 0; y < sh; y++ {
-		if len(widthLines[y]) != len(spriteLines[y]) {
-			return nil, 0, fmt.Errorf("width mask row %d length differs: sprite=%d width=%d", y+1, len(spriteLines[y]), len(widthLines[y]))
+		if len(widthLines[y]) > len(spriteLines[y]) {
+			return nil, 0, fmt.Errorf("width mask row %d length exceeds sprite: sprite=%d width=%d", y+1, len(spriteLines[y]), len(widthLines[y]))
 		}
 		out[y] = make([]int, len(widthLines[y]))
 		rowWidth := 0
@@ -238,6 +236,8 @@ func parseWidthMask(lines []string, hasWidth bool, spriteLines [][]rune, sw, sh 
 			out[y][x] = w
 			rowWidth += w
 		}
+		// Pad missing cells (ragged rows) as width=1 to match previous behavior.
+		rowWidth += (sw - len(widthLines[y]))
 		if expected == -1 {
 			expected = rowWidth
 		} else if rowWidth != expected {

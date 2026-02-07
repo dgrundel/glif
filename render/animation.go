@@ -93,12 +93,11 @@ func (s *Sprite) LoadAnimation(name string) (*Animation, error) {
 		cells := make([]grid.Cell, s.W*s.H)
 		for y := 0; y < s.H; y++ {
 			col := 0
-			rowLen := len(spriteLines[y])
-			for x := 0; x < rowLen; x++ {
+			for x := 0; x < sw; x++ {
 				spr := runeAt(animLines[startY+y], x)
 				mask := runeAt(colorLines[startY+y], x)
 				width := 1
-				if hasWidth {
+				if hasWidth && x < len(widthMask[y]) {
 					width = widthMask[y][x]
 				}
 				visible := mask != ' ' && mask != '.'
@@ -277,8 +276,8 @@ func parseWidthMask(lines []string, hasWidth bool, spriteLines [][]rune, sw, sh 
 	out := make([][]int, sh)
 	expected := -1
 	for y := 0; y < sh; y++ {
-		if len(widthLines[y]) != len(spriteLines[y]) {
-			return nil, 0, fmt.Errorf("width mask row %d length differs: sprite=%d width=%d", y+1, len(spriteLines[y]), len(widthLines[y]))
+		if len(widthLines[y]) > len(spriteLines[y]) {
+			return nil, 0, fmt.Errorf("width mask row %d length exceeds sprite: sprite=%d width=%d", y+1, len(spriteLines[y]), len(widthLines[y]))
 		}
 		out[y] = make([]int, len(widthLines[y]))
 		rowWidth := 0
@@ -290,6 +289,7 @@ func parseWidthMask(lines []string, hasWidth bool, spriteLines [][]rune, sw, sh 
 			out[y][x] = w
 			rowWidth += w
 		}
+		rowWidth += (sw - len(widthLines[y]))
 		if expected == -1 {
 			expected = rowWidth
 		} else if rowWidth != expected {
