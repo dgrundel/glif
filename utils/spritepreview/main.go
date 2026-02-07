@@ -62,10 +62,10 @@ func NewSpritePreview(items []PreviewItem, reload func() ([]PreviewItem, error))
 			"quit":     "key:esc",
 			"quit_alt": "key:ctrl+c",
 		},
-		border:     grid.Style{Fg: tcell.ColorWhite, Bg: tcell.ColorReset},
-		text:       grid.Style{Fg: tcell.ColorWhite, Bg: tcell.ColorReset},
-		errorText:  grid.Style{Fg: tcell.ColorWhite, Bg: tcell.ColorRed},
-		background: grid.Style{Fg: tcell.ColorReset, Bg: tcell.ColorReset},
+		border:     grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorReset)},
+		text:       grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorReset)},
+		errorText:  grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorRed)},
+		background: grid.Style{Fg: grid.TCellColor(tcell.ColorReset), Bg: grid.TCellColor(tcell.ColorReset)},
 	}
 }
 

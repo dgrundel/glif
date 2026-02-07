@@ -96,7 +96,7 @@ func (p *Picker) Draw(r *render.Renderer) {
 		tcell.NewRGBColor(0, 0, int32(p.values[2])),
 	}
 
-	boxStyle := grid.Style{Fg: tcell.ColorWhite, Bg: tcell.ColorReset}
+	boxStyle := grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorReset)}
 	textStyle := p.uiStyle
 
 	for i := 0; i < 3; i++ {
@@ -112,7 +112,7 @@ func (p *Picker) Draw(r *render.Renderer) {
 		if innerW > 0 {
 			fill = (p.values[i] * innerW) / 255
 		}
-		barStyle := grid.Style{Fg: colors[i], Bg: tcell.ColorReset}
+		barStyle := grid.Style{Fg: grid.TCellColor(colors[i]), Bg: grid.TCellColor(tcell.ColorReset)}
 		for x := 0; x < fill; x++ {
 			r.Frame.Set(barX+1+x, y+1, grid.Cell{Ch: '█', Style: barStyle})
 		}
@@ -123,7 +123,7 @@ func (p *Picker) Draw(r *render.Renderer) {
 
 	swatchY := startY
 	color := tcell.NewRGBColor(int32(p.values[0]), int32(p.values[1]), int32(p.values[2]))
-	swatchStyle := grid.Style{Fg: color, Bg: color}
+	swatchStyle := grid.Style{Fg: grid.TCellColor(color), Bg: grid.TCellColor(color)}
 	r.Rect(swatchX, swatchY, swatchW, swatchH, swatchStyle, render.RectOptions{Fill: true})
 	r.Rect(swatchX, swatchY, swatchW, swatchH, boxStyle)
 

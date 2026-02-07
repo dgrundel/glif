@@ -24,7 +24,7 @@ func NewScreen() (*Screen, error) {
 	s.Clear()
 
 	w, h := s.Size()
-	clear := grid.Cell{Ch: ' ', Style: grid.Style{Fg: tcell.ColorReset, Bg: tcell.ColorReset}}
+	clear := grid.Cell{Ch: ' ', Style: grid.Style{Fg: grid.TCellColor(tcell.ColorReset), Bg: grid.TCellColor(tcell.ColorReset)}}
 	front := grid.NewFrame(w, h, clear)
 
 	return &Screen{screen: s, front: front}, nil

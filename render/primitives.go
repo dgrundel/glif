@@ -48,7 +48,8 @@ func (r *Renderer) Rect(x, y, w, h int, style grid.Style, opts ...RectOptions) {
 		}
 		for row := 0; row < h; row++ {
 			for col := 0; col < w; col++ {
-				r.Frame.Set(x+col, y+row, grid.Cell{Ch: fillRune, Style: style})
+				resolved := style.Resolve(r.Frame.At(x+col, y+row).Style)
+				r.Frame.Set(x+col, y+row, grid.Cell{Ch: fillRune, Style: resolved})
 			}
 		}
 		return
@@ -57,17 +58,17 @@ func (r *Renderer) Rect(x, y, w, h int, style grid.Style, opts ...RectOptions) {
 	if w < 2 || h < 2 {
 		return
 	}
-	r.Frame.Set(x, y, grid.Cell{Ch: opt.TLCorner, Style: style})
-	r.Frame.Set(x+w-1, y, grid.Cell{Ch: opt.TRCorner, Style: style})
-	r.Frame.Set(x, y+h-1, grid.Cell{Ch: opt.BLCorner, Style: style})
-	r.Frame.Set(x+w-1, y+h-1, grid.Cell{Ch: opt.BRCorner, Style: style})
+	r.Frame.Set(x, y, grid.Cell{Ch: opt.TLCorner, Style: style.Resolve(r.Frame.At(x, y).Style)})
+	r.Frame.Set(x+w-1, y, grid.Cell{Ch: opt.TRCorner, Style: style.Resolve(r.Frame.At(x+w-1, y).Style)})
+	r.Frame.Set(x, y+h-1, grid.Cell{Ch: opt.BLCorner, Style: style.Resolve(r.Frame.At(x, y+h-1).Style)})
+	r.Frame.Set(x+w-1, y+h-1, grid.Cell{Ch: opt.BRCorner, Style: style.Resolve(r.Frame.At(x+w-1, y+h-1).Style)})
 	for i := 1; i < w-1; i++ {
-		r.Frame.Set(x+i, y, grid.Cell{Ch: opt.HLine, Style: style})
-		r.Frame.Set(x+i, y+h-1, grid.Cell{Ch: opt.HLine, Style: style})
+		r.Frame.Set(x+i, y, grid.Cell{Ch: opt.HLine, Style: style.Resolve(r.Frame.At(x+i, y).Style)})
+		r.Frame.Set(x+i, y+h-1, grid.Cell{Ch: opt.HLine, Style: style.Resolve(r.Frame.At(x+i, y+h-1).Style)})
 	}
 	for j := 1; j < h-1; j++ {
-		r.Frame.Set(x, y+j, grid.Cell{Ch: opt.VLine, Style: style})
-		r.Frame.Set(x+w-1, y+j, grid.Cell{Ch: opt.VLine, Style: style})
+		r.Frame.Set(x, y+j, grid.Cell{Ch: opt.VLine, Style: style.Resolve(r.Frame.At(x, y+j).Style)})
+		r.Frame.Set(x+w-1, y+j, grid.Cell{Ch: opt.VLine, Style: style.Resolve(r.Frame.At(x+w-1, y+j).Style)})
 	}
 }
 
@@ -89,7 +90,8 @@ func (r *Renderer) HLine(x, y, length int, style grid.Style, opts ...LineOptions
 		ch = opts[0].Rune
 	}
 	for i := 0; i < length; i++ {
-		r.Frame.Set(x+i, y, grid.Cell{Ch: ch, Style: style})
+		resolved := style.Resolve(r.Frame.At(x+i, y).Style)
+		r.Frame.Set(x+i, y, grid.Cell{Ch: ch, Style: resolved})
 	}
 }
 
@@ -111,7 +113,8 @@ func (r *Renderer) VLine(x, y, length int, style grid.Style, opts ...LineOptions
 		ch = opts[0].Rune
 	}
 	for i := 0; i < length; i++ {
-		r.Frame.Set(x, y+i, grid.Cell{Ch: ch, Style: style})
+		resolved := style.Resolve(r.Frame.At(x, y+i).Style)
+		r.Frame.Set(x, y+i, grid.Cell{Ch: ch, Style: resolved})
 	}
 }
 

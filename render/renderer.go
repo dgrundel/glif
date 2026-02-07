@@ -59,6 +59,7 @@ func (r *Renderer) DrawSprite(x, y int, sprite *Sprite) {
 		for col := 0; col < sprite.W; col++ {
 			cell := sprite.cellAt(col, row)
 			if cell.Skip {
+				cell.Style = cell.Style.Resolve(r.Frame.At(x+col, y+row).Style)
 				r.Frame.Set(x+col, y+row, cell)
 				continue
 			}
@@ -68,6 +69,7 @@ func (r *Renderer) DrawSprite(x, y int, sprite *Sprite) {
 			if sprite.Transparent != 0 && cell.Ch == sprite.Transparent {
 				continue
 			}
+			cell.Style = cell.Style.Resolve(r.Frame.At(x+col, y+row).Style)
 			r.Frame.Set(x+col, y+row, cell)
 		}
 	}
@@ -89,7 +91,8 @@ func (r *Renderer) DrawText(x, y int, text string, style grid.Style) {
 			cx = x
 			continue
 		}
-		r.Frame.Set(cx, y, grid.Cell{Ch: ch, Style: style})
+		resolved := style.Resolve(r.Frame.At(cx, y).Style)
+		r.Frame.Set(cx, y, grid.Cell{Ch: ch, Style: resolved})
 		cx++
 	}
 }

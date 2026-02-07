@@ -105,24 +105,26 @@ func (p *Palette) MustStyle(key rune) grid.Style {
 	return style
 }
 
-func parseColor(name string) (tcell.Color, error) {
+func parseColor(name string) (grid.Color, error) {
 	name = strings.ToLower(strings.TrimSpace(name))
 	switch name {
 	case "reset", "default":
-		return tcell.ColorReset, nil
+		return grid.TCellColor(tcell.ColorReset), nil
+	case "inherit":
+		return grid.InheritColor(), nil
 	}
 	if strings.HasPrefix(name, "#") {
 		r, g, b, ok := parseHexColor(name)
 		if !ok {
-			return 0, fmt.Errorf("invalid hex color: %q", name)
+			return grid.Color{}, fmt.Errorf("invalid hex color: %q", name)
 		}
-		return tcell.NewRGBColor(int32(r), int32(g), int32(b)), nil
+		return grid.TCellColor(tcell.NewRGBColor(int32(r), int32(g), int32(b))), nil
 	}
 	c := tcell.GetColor(name)
 	if c == tcell.ColorDefault {
-		return 0, fmt.Errorf("unknown color: %q", name)
+		return grid.Color{}, fmt.Errorf("unknown color: %q", name)
 	}
-	return c, nil
+	return grid.TCellColor(c), nil
 }
 
 func parseHexColor(s string) (uint8, uint8, uint8, bool) {

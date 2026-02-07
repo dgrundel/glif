@@ -55,7 +55,7 @@ func New(game Game, tick time.Duration) (*Engine, error) {
 		return nil, err
 	}
 	w, h := screen.Size()
-	clear := grid.Cell{Ch: ' ', Style: grid.Style{Fg: tcell.ColorReset, Bg: tcell.ColorReset}}
+	clear := grid.Cell{Ch: ' ', Style: grid.Style{Fg: grid.TCellColor(tcell.ColorReset), Bg: grid.TCellColor(tcell.ColorReset)}}
 	frame := grid.NewFrame(w, h, clear)
 	r := render.NewRenderer(frame)
 	if tick <= 0 {

@@ -100,6 +100,7 @@ assets.LoadSprite("path/to/name")
 Palette colors support:
 - Hex RGB (`#RRGGBB` or `#RGB`)
 - Named colors supported by tcell
+- `inherit` (uses the color from the layer below, or the clear style if none)
 
 Example:
 
