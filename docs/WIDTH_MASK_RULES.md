@@ -26,17 +26,12 @@ If `.width` is missing, all glyphs are treated as width 1.
 ## Expanded Width Rule (Critical)
 For each row:
 
-- Compute the **expanded cell width** as the sum of the width values for the runes in that row.
-- **All rows must expand to the same total cell width.**
-- If any row expands to a different width, sprite loading should error.
+- Compute the **expanded cell width** as the sum of width values for the runes in that row.
+- Missing width entries (i.e., when the width mask row is shorter than the sprite row) are treated as width `1`.
+- The sprite’s **final width** is the maximum expanded width across all rows.
+- Shorter rows are **padded with spaces** to match the max expanded width.
 
 This allows ragged input while still producing a consistent rectangular sprite size.
-
-## Rendering Semantics
-- For width `1`, render the glyph in one cell.
-- For width `2`, render the glyph in the first cell and treat the second cell as a **continuation** cell (so nothing else overwrites it).
-- Color mask and collision mask should apply to **both cells** for a width‑2 rune.
-
 
 ## Rendering Behavior (Detailed)
 
@@ -48,7 +43,7 @@ Width masks are applied when the sprite is loaded. Each rune is expanded into on
   - **Cell A**: the rune
   - **Cell B**: a **continuation** placeholder
 
-The expanded width is the sum of widths per row; all rows must match.
+The expanded width is the sum of widths per row; the final sprite width is the max across rows.
 
 ### 2) Continuation cells
 A continuation cell is a real cell in the sprite grid, but it is **not rendered as a glyph**. It exists to reserve space so other rendering does not overwrite the second half of a wide character.
