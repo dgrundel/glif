@@ -26,6 +26,7 @@ type PreviewItem struct {
 
 type SpritePreview struct {
 	items      []PreviewItem
+	reload     func() ([]PreviewItem, error)
 	state      input.State
 	binds      input.ActionMap
 	quit       bool
@@ -46,14 +47,16 @@ type layoutItem struct {
 	h    int
 }
 
-func NewSpritePreview(items []PreviewItem) *SpritePreview {
+func NewSpritePreview(items []PreviewItem, reload func() ([]PreviewItem, error)) *SpritePreview {
 	return &SpritePreview{
-		items: items,
+		items:  items,
+		reload: reload,
 		binds: input.ActionMap{
 			"pan_up":   "key:up",
 			"pan_down": "key:down",
 			"pan_up_w": "w",
 			"pan_dn_s": "s",
+			"reload":   " ",
 			"quit":     "key:esc",
 			"quit_alt": "key:ctrl+c",
 		},
@@ -67,6 +70,14 @@ func (p *SpritePreview) Update(dt float64) {
 	if p.pressed("quit") || p.pressed("quit_alt") {
 		p.quit = true
 		return
+	}
+	if p.pressed("reload") && p.reload != nil {
+		items, err := p.reload()
+		if err != nil {
+			log.Printf("reload sprites: %v", err)
+		} else {
+			p.items = items
+		}
 	}
 
 	layout := p.computeLayout(p.width)
@@ -110,6 +121,11 @@ func (p *SpritePreview) Draw(r *render.Renderer) {
 	}
 	if p.panY > p.maxPan {
 		p.panY = p.maxPan
+	}
+
+	help := "Press space to refresh, Esc to exit"
+	if r.Frame.H > 0 {
+		r.DrawText(0, r.Frame.H-1, help, p.text)
 	}
 
 	offsetY := int(p.panY)
@@ -202,38 +218,29 @@ func max(a, b int) int {
 	return b
 }
 
-func loadItem(base, label string) PreviewItem {
+func loadItem(base, label string) (PreviewItem, error) {
 	basePath := base
 	if strings.HasSuffix(basePath, ".sprite") {
 		basePath = strings.TrimSuffix(basePath, ".sprite")
 	}
 	sprite, err := assets.LoadSprite(basePath)
 	if err != nil {
-		log.Fatalf("load sprite %s: %v", base, err)
+		return PreviewItem{}, fmt.Errorf("load sprite %s: %w", base, err)
 	}
 	name := filepath.Base(label)
 	return PreviewItem{
 		Name:       name,
 		LabelWidth: utf8.RuneCountInString(name),
 		Sprite:     sprite,
-	}
+	}, nil
 }
 
-func main() {
-	recursive := flag.Bool("r", false, "recursively scan folders for .sprite files")
-	flag.Parse()
-
-	args := flag.Args()
-	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: spritepreview [-r] path/to/sprite_or_folder [more sprites_or_folders...]")
-		os.Exit(2)
-	}
-
+func buildItems(args []string, recursive bool) ([]PreviewItem, error) {
 	items := make([]PreviewItem, 0, len(args))
 	for _, arg := range args {
 		info, err := os.Stat(arg)
 		if err == nil && info.IsDir() {
-			if *recursive {
+			if recursive {
 				paths := make([]string, 0)
 				err := filepath.WalkDir(arg, func(path string, d os.DirEntry, err error) error {
 					if err != nil {
@@ -248,18 +255,22 @@ func main() {
 					return nil
 				})
 				if err != nil {
-					log.Fatalf("walk dir %s: %v", arg, err)
+					return nil, fmt.Errorf("walk dir %s: %w", arg, err)
 				}
 				sort.Strings(paths)
 				for _, path := range paths {
 					base := strings.TrimSuffix(path, ".sprite")
 					label := path
-					items = append(items, loadItem(base, label))
+					item, err := loadItem(base, label)
+					if err != nil {
+						return nil, err
+					}
+					items = append(items, item)
 				}
 			} else {
 				entries, err := os.ReadDir(arg)
 				if err != nil {
-					log.Fatalf("read dir %s: %v", arg, err)
+					return nil, fmt.Errorf("read dir %s: %w", arg, err)
 				}
 				names := make([]string, 0, len(entries))
 				for _, entry := range entries {
@@ -274,20 +285,46 @@ func main() {
 				sort.Strings(names)
 				for _, name := range names {
 					base := filepath.Join(arg, strings.TrimSuffix(name, ".sprite"))
-					items = append(items, loadItem(base, name))
+					item, err := loadItem(base, name)
+					if err != nil {
+						return nil, err
+					}
+					items = append(items, item)
 				}
 			}
 			continue
 		}
-		items = append(items, loadItem(arg, filepath.Base(arg)))
+		item, err := loadItem(arg, filepath.Base(arg))
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func main() {
+	recursive := flag.Bool("r", false, "recursively scan folders for .sprite files")
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "usage: spritepreview [-r] path/to/sprite_or_folder [more sprites_or_folders...]")
+		os.Exit(2)
 	}
 
+	items, err := buildItems(args, *recursive)
+	if err != nil {
+		log.Fatal(err)
+	}
 	if len(items) == 0 {
 		fmt.Fprintln(os.Stderr, "no sprites found in provided inputs")
 		os.Exit(2)
 	}
 
-	game := NewSpritePreview(items)
+	game := NewSpritePreview(items, func() ([]PreviewItem, error) {
+		return buildItems(args, *recursive)
+	})
 	eng, err := engine.New(game, 0)
 	if err != nil {
 		log.Fatal(err)
