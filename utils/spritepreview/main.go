@@ -30,12 +30,14 @@ type SpritePreview struct {
 	state      input.State
 	binds      input.ActionMap
 	quit       bool
+	status     string
 	panY       float64
 	maxPan     float64
 	width      int
 	height     int
 	border     grid.Style
 	text       grid.Style
+	errorText  grid.Style
 	background grid.Style
 }
 
@@ -62,6 +64,7 @@ func NewSpritePreview(items []PreviewItem, reload func() ([]PreviewItem, error))
 		},
 		border:     grid.Style{Fg: tcell.ColorWhite, Bg: tcell.ColorReset},
 		text:       grid.Style{Fg: tcell.ColorWhite, Bg: tcell.ColorReset},
+		errorText:  grid.Style{Fg: tcell.ColorWhite, Bg: tcell.ColorRed},
 		background: grid.Style{Fg: tcell.ColorReset, Bg: tcell.ColorReset},
 	}
 }
@@ -74,9 +77,10 @@ func (p *SpritePreview) Update(dt float64) {
 	if p.pressed("reload") && p.reload != nil {
 		items, err := p.reload()
 		if err != nil {
-			log.Printf("reload sprites: %v", err)
+			p.status = fmt.Sprintf("Reload failed: %v", err)
 		} else {
 			p.items = items
+			p.status = ""
 		}
 	}
 
@@ -124,8 +128,14 @@ func (p *SpritePreview) Draw(r *render.Renderer) {
 	}
 
 	help := "Press space to refresh, Esc to exit"
+	helpStyle := p.text
+	if p.status != "" {
+		help = p.status
+		helpStyle = p.errorText
+	}
 	if r.Frame.H > 0 {
-		r.DrawText(0, r.Frame.H-1, help, p.text)
+		help = truncateToWidth(help, r.Frame.W)
+		r.DrawText(0, r.Frame.H-1, help, helpStyle)
 	}
 
 	offsetY := int(p.panY)
@@ -216,6 +226,20 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func truncateToWidth(s string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	count := 0
+	for i := range s {
+		if count == width {
+			return s[:i]
+		}
+		count++
+	}
+	return s
 }
 
 func loadItem(base, label string) (PreviewItem, error) {
