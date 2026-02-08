@@ -1,0 +1,560 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/dgrundel/glif/engine"
+	"github.com/dgrundel/glif/grid"
+	"github.com/dgrundel/glif/input"
+	"github.com/dgrundel/glif/render"
+	"github.com/gdamore/tcell/v3"
+)
+
+type Point struct {
+	X int
+	Y int
+}
+
+type statusKind int
+
+const (
+	statusNone statusKind = iota
+	statusInfo
+	statusWarn
+	statusError
+)
+
+type Editor struct {
+	path        string
+	cells       map[Point]rune
+	cursorX     int
+	cursorY     int
+	quit        bool
+	status      string
+	statusKind  statusKind
+	pendingQuit bool
+	state       input.State
+	actions     input.ActionState
+	actionMap   input.ActionMap
+	moveAccumX  float64
+	moveAccumY  float64
+	holdLeft    float64
+	holdRight   float64
+	holdUp      float64
+	holdDown    float64
+	barStyle    grid.Style
+	spriteStyle grid.Style
+	areaStyle   grid.Style
+	cursorStyle grid.Style
+}
+
+func NewEditor(path string, cells map[Point]rune) *Editor {
+	if cells == nil {
+		cells = map[Point]rune{}
+	}
+	return &Editor{
+		path:        path,
+		cells:       cells,
+		actionMap:   defaultActions(),
+		barStyle:    grid.Style{Fg: grid.TCellColor(tcell.ColorBlack), Bg: grid.TCellColor(tcell.ColorWhite)},
+		spriteStyle: grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorDarkGray)},
+		areaStyle:   grid.Style{Fg: grid.TCellColor(tcell.ColorReset), Bg: grid.TCellColor(tcell.ColorLightGreen)},
+		cursorStyle: grid.Style{Fg: grid.TCellColor(tcell.ColorBlack), Bg: grid.TCellColor(tcell.ColorWhite)},
+	}
+}
+
+func defaultActions() input.ActionMap {
+	return input.ActionMap{
+		"left":      "key:left",
+		"right":     "key:right",
+		"up":        "key:up",
+		"down":      "key:down",
+		"newline":   "key:enter",
+		"backspace": "key:backspace",
+		"delete":    "key:delete",
+		"save":      "key:ctrl+s",
+		"trim":      "key:ctrl+k",
+		"quit":      "key:ctrl+q",
+		"quit_alt":  "key:esc",
+	}
+}
+
+func (e *Editor) ActionMap() input.ActionMap {
+	return e.actionMap
+}
+
+func (e *Editor) UpdateActionState(state input.ActionState) {
+	e.actions = state
+}
+
+func (e *Editor) SetInput(state input.State) {
+	e.state = state
+}
+
+func (e *Editor) ShouldQuit() bool {
+	return e.quit
+}
+
+func (e *Editor) Update(dt float64) {
+	quitPressed := e.pressed("quit") || e.pressed("quit_alt")
+	if quitPressed {
+		if e.pendingQuit {
+			e.quit = true
+			return
+		}
+		e.pendingQuit = true
+		e.status = "Press Ctrl+Q or Esc again to quit"
+		e.statusKind = statusWarn
+		return
+	}
+
+	if e.pressed("save") {
+		if err := writeSprite(e.path, e.cells); err != nil {
+			e.status = fmt.Sprintf("save failed: %v", err)
+			e.statusKind = statusError
+		} else {
+			e.status = "saved"
+			e.statusKind = statusInfo
+		}
+	}
+	if e.pressed("trim") {
+		e.cells = trimOuterWhitespace(e.cells)
+		e.status = "trimmed"
+		e.statusKind = statusInfo
+	}
+
+	pressedLeft := e.pressed("left")
+	pressedRight := e.pressed("right")
+	pressedUp := e.pressed("up")
+	pressedDown := e.pressed("down")
+
+	if pressedLeft {
+		if e.cursorX > 0 {
+			e.cursorX--
+		}
+	}
+	if pressedRight {
+		e.cursorX++
+	}
+	if pressedUp {
+		if e.cursorY > 0 {
+			e.cursorY--
+		}
+	}
+	if pressedDown {
+		e.cursorY++
+	}
+
+	if e.pressed("newline") {
+		e.cursorY++
+		e.cursorX = 0
+	}
+
+	if e.pressed("backspace") {
+		if e.cursorX > 0 {
+			e.cursorX--
+			e.clearCell(e.cursorX, e.cursorY)
+		}
+	}
+	if e.pressed("delete") {
+		e.clearCell(e.cursorX, e.cursorY)
+	}
+
+	for key := range e.state.Pressed {
+		if strings.HasPrefix(string(key), "key:") {
+			continue
+		}
+		r := []rune(string(key))
+		if len(r) != 1 {
+			continue
+		}
+		e.setCell(e.cursorX, e.cursorY, r[0])
+		e.cursorX++
+	}
+
+	e.handleHeldMovement(dt, pressedLeft || pressedRight, pressedUp || pressedDown)
+
+	if e.pendingQuit && e.anyNonQuitPress() {
+		e.pendingQuit = false
+		if e.statusKind == statusWarn {
+			e.status = ""
+			e.statusKind = statusNone
+		}
+	}
+
+	if e.cursorX < 0 {
+		e.cursorX = 0
+	}
+	if e.cursorY < 0 {
+		e.cursorY = 0
+	}
+}
+
+func (e *Editor) Draw(r *render.Renderer) {
+	frameW := r.Frame.W
+	frameH := r.Frame.H
+	if frameW <= 0 || frameH <= 0 {
+		return
+	}
+
+	pathText := truncateToWidth(e.path, frameW)
+	r.Rect(0, 0, frameW, 1, e.barStyle, render.RectOptions{Fill: true, FillRune: ' '})
+	r.DrawText(0, 0, pathText, e.barStyle)
+
+	w, h := boundsSize(e.cells)
+	status := fmt.Sprintf("%dx%d", w, h)
+	if e.status != "" {
+		status = fmt.Sprintf("%s | %s", status, e.status)
+	}
+	status = truncateToWidth(status, frameW)
+	statusStyle := e.barStyle
+	if e.statusKind == statusWarn || e.statusKind == statusError {
+		statusStyle = grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorRed)}
+	}
+	r.Rect(0, frameH-1, frameW, 1, statusStyle, render.RectOptions{Fill: true, FillRune: ' '})
+	r.DrawText(0, frameH-1, status, statusStyle)
+
+	areaW := w
+	areaH := h
+	if areaW < 1 {
+		areaW = 1
+	}
+	if areaH < 1 {
+		areaH = 1
+	}
+	maxAreaW := frameW
+	maxAreaH := frameH - 2
+	if maxAreaH < 0 {
+		maxAreaH = 0
+	}
+	if areaW > maxAreaW {
+		areaW = maxAreaW
+	}
+	if areaH > maxAreaH {
+		areaH = maxAreaH
+	}
+
+	for y := 0; y < areaH; y++ {
+		drawY := 1 + y
+		if drawY >= frameH-1 {
+			break
+		}
+		for x := 0; x < areaW && x < frameW; x++ {
+			ch, ok := e.cells[Point{X: x, Y: y}]
+			if !ok {
+				r.Frame.Set(x, drawY, grid.Cell{Ch: ' ', Style: e.areaStyle.Resolve(r.Frame.At(x, drawY).Style)})
+				continue
+			}
+			r.Frame.Set(x, drawY, grid.Cell{Ch: ch, Style: e.spriteStyle.Resolve(r.Frame.At(x, drawY).Style)})
+		}
+	}
+
+	drawX := e.cursorX
+	drawY := 1 + e.cursorY
+	if drawX >= 0 && drawX < frameW && drawY >= 1 && drawY < frameH-1 {
+		ch, ok := e.cells[Point{X: e.cursorX, Y: e.cursorY}]
+		if !ok {
+			ch = ' '
+		}
+		base := r.Frame.At(drawX, drawY).Style
+		r.Frame.Set(drawX, drawY, grid.Cell{Ch: ch, Style: e.cursorStyle.Resolve(base)})
+	}
+}
+
+func (e *Editor) Resize(w, h int) {
+}
+
+func (e *Editor) pressed(action input.Action) bool {
+	if e.actions.Pressed == nil {
+		return false
+	}
+	return e.actions.Pressed[action]
+}
+
+func (e *Editor) held(action input.Action) bool {
+	if e.actions.Held == nil {
+		return false
+	}
+	return e.actions.Held[action]
+}
+
+func (e *Editor) anyNonQuitPress() bool {
+	if e.actions.Pressed != nil {
+		for action, pressed := range e.actions.Pressed {
+			if !pressed {
+				continue
+			}
+			if action == "quit" || action == "quit_alt" {
+				continue
+			}
+			return true
+		}
+	}
+	for key := range e.state.Pressed {
+		if string(key) == "key:ctrl+q" || string(key) == "key:esc" {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func (e *Editor) handleHeldMovement(dt float64, pressedX, pressedY bool) {
+	const moveRate = 18.0
+	const repeatDelay = 0.25
+
+	if pressedX {
+		e.holdLeft = 0
+		e.holdRight = 0
+	}
+	if pressedY {
+		e.holdUp = 0
+		e.holdDown = 0
+	}
+
+	if e.held("left") {
+		e.holdLeft += dt
+	} else {
+		e.holdLeft = 0
+	}
+	if e.held("right") {
+		e.holdRight += dt
+	} else {
+		e.holdRight = 0
+	}
+	if e.held("up") {
+		e.holdUp += dt
+	} else {
+		e.holdUp = 0
+	}
+	if e.held("down") {
+		e.holdDown += dt
+	} else {
+		e.holdDown = 0
+	}
+
+	moveX := 0
+	moveY := 0
+	if e.holdLeft >= repeatDelay {
+		moveX--
+	}
+	if e.holdRight >= repeatDelay {
+		moveX++
+	}
+	if e.holdUp >= repeatDelay {
+		moveY--
+	}
+	if e.holdDown >= repeatDelay {
+		moveY++
+	}
+
+	if moveX == 0 {
+		e.moveAccumX = 0
+	} else {
+		e.moveAccumX += float64(moveX) * moveRate * dt
+	}
+	if moveY == 0 {
+		e.moveAccumY = 0
+	} else {
+		e.moveAccumY += float64(moveY) * moveRate * dt
+	}
+
+	for e.moveAccumX >= 1 {
+		e.cursorX++
+		e.moveAccumX -= 1
+	}
+	for e.moveAccumX <= -1 {
+		if e.cursorX > 0 {
+			e.cursorX--
+		}
+		e.moveAccumX += 1
+	}
+	for e.moveAccumY >= 1 {
+		e.cursorY++
+		e.moveAccumY -= 1
+	}
+	for e.moveAccumY <= -1 {
+		if e.cursorY > 0 {
+			e.cursorY--
+		}
+		e.moveAccumY += 1
+	}
+}
+
+func (e *Editor) setCell(x, y int, ch rune) {
+	if x < 0 || y < 0 {
+		return
+	}
+	e.cells[Point{X: x, Y: y}] = ch
+}
+
+func (e *Editor) clearCell(x, y int) {
+	if x < 0 || y < 0 {
+		return
+	}
+	delete(e.cells, Point{X: x, Y: y})
+}
+
+func boundsSize(cells map[Point]rune) (int, int) {
+	maxX := -1
+	maxY := -1
+	for p := range cells {
+		if p.X > maxX {
+			maxX = p.X
+		}
+		if p.Y > maxY {
+			maxY = p.Y
+		}
+	}
+	if maxX < 0 || maxY < 0 {
+		return 0, 0
+	}
+	return maxX + 1, maxY + 1
+}
+
+func trimOuterWhitespace(cells map[Point]rune) map[Point]rune {
+	minX := -1
+	maxX := -1
+	minY := -1
+	maxY := -1
+	for p, ch := range cells {
+		if ch == ' ' {
+			continue
+		}
+		if minX == -1 || p.X < minX {
+			minX = p.X
+		}
+		if maxX == -1 || p.X > maxX {
+			maxX = p.X
+		}
+		if minY == -1 || p.Y < minY {
+			minY = p.Y
+		}
+		if maxY == -1 || p.Y > maxY {
+			maxY = p.Y
+		}
+	}
+	if minX == -1 || maxX == -1 || minY == -1 || maxY == -1 {
+		return map[Point]rune{}
+	}
+	out := make(map[Point]rune, len(cells))
+	for p, ch := range cells {
+		if p.X < minX || p.X > maxX || p.Y < minY || p.Y > maxY {
+			continue
+		}
+		out[Point{X: p.X - minX, Y: p.Y - minY}] = ch
+	}
+	return out
+}
+
+func truncateToWidth(s string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	count := 0
+	for i := range s {
+		if count == width {
+			return s[:i]
+		}
+		count++
+	}
+	return s
+}
+
+func readSprite(path string) (map[Point]rune, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	text := string(data)
+	if strings.HasSuffix(text, "\n") {
+		text = strings.TrimRight(text, "\n")
+	}
+	if text == "" {
+		return map[Point]rune{}, nil
+	}
+	lines := strings.Split(text, "\n")
+	out := make(map[Point]rune)
+	for y, line := range lines {
+		for x, ch := range []rune(line) {
+			out[Point{X: x, Y: y}] = ch
+		}
+	}
+	return out, nil
+}
+
+func writeSprite(path string, cells map[Point]rune) error {
+	w, h := boundsSize(cells)
+	if w == 0 || h == 0 {
+		return os.WriteFile(path, []byte(""), 0o644)
+	}
+	lines := make([][]rune, h)
+	for y := 0; y < h; y++ {
+		line := make([]rune, w)
+		for x := 0; x < w; x++ {
+			line[x] = ' '
+		}
+		lines[y] = line
+	}
+	for p, ch := range cells {
+		if p.X < 0 || p.Y < 0 || p.X >= w || p.Y >= h {
+			continue
+		}
+		lines[p.Y][p.X] = ch
+	}
+	parts := make([]string, h)
+	for y := 0; y < h; y++ {
+		parts[y] = string(lines[y])
+	}
+	out := strings.Join(parts, "\n")
+	return os.WriteFile(path, []byte(out), 0o644)
+}
+
+func main() {
+	flag.Parse()
+	args := flag.Args()
+	if len(args) != 1 {
+		fmt.Fprintln(os.Stderr, "usage: spriteeditor path/to/file.sprite")
+		os.Exit(2)
+	}
+
+	path := args[0]
+	if !strings.HasSuffix(path, ".sprite") {
+		fmt.Fprintln(os.Stderr, "path must end with .sprite")
+		os.Exit(2)
+	}
+
+	if dir := filepath.Dir(path); dir != "." {
+		if _, err := os.Stat(dir); err != nil {
+			fmt.Fprintf(os.Stderr, "invalid directory: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	cells := map[Point]rune{}
+	if _, err := os.Stat(path); err == nil {
+		loaded, err := readSprite(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		cells = loaded
+	} else if !os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+
+	game := NewEditor(path, cells)
+	eng, err := engine.New(game, 0)
+	if err != nil {
+		log.Fatal(err)
+	}
+	eng.Frame.Clear = grid.Cell{Ch: ' ', Style: grid.Style{Fg: grid.TCellColor(tcell.ColorReset), Bg: grid.TCellColor(tcell.ColorReset)}}
+	eng.Frame.ClearAll()
+	if err := eng.Run(game); err != nil {
+		log.Fatal(err)
+	}
+}
