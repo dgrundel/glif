@@ -166,15 +166,8 @@ func (e *Editor) Update(dt float64) {
 		e.clearCell(e.cursorX, e.cursorY)
 	}
 
-	for key := range e.state.Pressed {
-		if strings.HasPrefix(string(key), "key:") {
-			continue
-		}
-		r := []rune(string(key))
-		if len(r) != 1 {
-			continue
-		}
-		e.setCell(e.cursorX, e.cursorY, r[0])
+	for _, r := range e.state.Typed {
+		e.setCell(e.cursorX, e.cursorY, r)
 		e.cursorX++
 	}
 

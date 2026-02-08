@@ -9,6 +9,7 @@ import (
 type State struct {
 	Held    map[Key]bool
 	Pressed map[Key]bool
+	Typed   []rune
 }
 
 // Action is a game-defined action identifier.
@@ -47,6 +48,7 @@ type Manager struct {
 	hold    float64
 	keys    map[Key]float64
 	pressed map[Key]bool
+	typed   []rune
 }
 
 func New(holdDuration float64) *Manager {
@@ -57,6 +59,7 @@ func New(holdDuration float64) *Manager {
 		hold:    holdDuration,
 		keys:    map[Key]float64{},
 		pressed: map[Key]bool{},
+		typed:   nil,
 	}
 }
 
@@ -73,6 +76,13 @@ func (m *Manager) HandleEvent(ev tcell.Event) {
 		m.pressed[id] = true
 	}
 	m.keys[id] = m.hold
+
+	if key.Key() == tcell.KeyRune {
+		str := key.Str()
+		for _, r := range []rune(str) {
+			m.typed = append(m.typed, r)
+		}
+	}
 }
 
 func (m *Manager) Step(dt float64) State {
@@ -90,8 +100,10 @@ func (m *Manager) Step(dt float64) State {
 
 	pressed := m.pressed
 	m.pressed = map[Key]bool{}
+	typed := m.typed
+	m.typed = nil
 
-	return State{Held: held, Pressed: pressed}
+	return State{Held: held, Pressed: pressed, Typed: typed}
 }
 
 func KeyID(ev *tcell.EventKey) Key {
