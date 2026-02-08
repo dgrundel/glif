@@ -28,17 +28,17 @@ type Scene interface {
 	Draw(r *render.Renderer)
 }
 
-// Optional hooks.
-type Resizer interface { Resize(w, h int) }
-type ActionAware interface {
-	ActionMap() input.ActionMap
-	UpdateActionState(state input.ActionState)
-}
-type InputAware interface { SetInput(state input.State) }
+// Optional hooks (reuse engine interfaces).
+// - engine.Resizer
+// - engine.ActionAware
+// - engine.InputAware
 
 // Lifecycle hooks.
-type Enterer interface { OnEnter() }
+// OnEnter receives the owning stack so scenes can push/pop/replace directly.
+type Enterer interface { OnEnter(stack *Stack) }
 type Exiter interface { OnExit() }
+type Suspender interface { OnSuspend() }
+type Resumer interface { OnResume() }
 
 // SceneStack manages scene routing.
 type Stack struct {
@@ -66,9 +66,15 @@ func (s *Stack) SetInput(state input.State)
 ### Behavior
 - **Update/Draw**: routed to the top scene only.
 - **Resize**: forwarded to all scenes that implement `Resizer` (or only top; see alternatives).
-- **Push**: calls `OnExit` on the current top scene (if implemented), then `OnEnter` on the new scene.
-- **Pop**: calls `OnExit` on the popped scene, then `OnEnter` on the new top (if present).
-- **Replace**: pops current top (with exit), then pushes new (with enter).
+- **Push**: calls `OnSuspend` on the current top scene (if implemented), then `OnEnter` on the new scene.
+- **Pop**: calls `OnExit` on the popped scene, then `OnResume` on the new top (if present).
+- **Replace**: calls `OnExit` on the current top, then `OnEnter` on the new scene.
+
+### Lifecycle Summary
+- **OnEnter**: scene becomes active for the first time (or after replace).
+- **OnExit**: scene is removed permanently.
+- **OnSuspend**: scene is covered by another scene but remains on the stack.
+- **OnResume**: scene becomes active again after being suspended.
 
 ## Implementation Plan
 1. Add `scene/stack.go` with the `Stack` implementation.
@@ -104,6 +110,10 @@ import (
 type MenuScene struct{}
 func (m *MenuScene) Update(dt float64) {}
 func (m *MenuScene) Draw(r *render.Renderer) { r.DrawText(2, 2, "MENU", r.Frame.Clear.Style) }
+
+func (m *MenuScene) OnEnter(stack *scene.Stack) {
+	_ = stack
+}
 
 func (m *MenuScene) ActionMap() input.ActionMap { return input.ActionMap{"start": "key:enter"} }
 func (m *MenuScene) UpdateActionState(state input.ActionState) {}
