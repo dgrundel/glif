@@ -118,6 +118,7 @@ func (e *Editor) Update(dt float64) {
 			e.status = fmt.Sprintf("save failed: %v", err)
 			e.statusKind = statusError
 		} else {
+			e.cells = normalizeCells(e.cells)
 			e.status = "saved"
 			e.statusKind = statusInfo
 		}
@@ -513,6 +514,26 @@ func writeSprite(path string, cells map[Point]rune) error {
 	}
 	out := strings.Join(parts, "\n")
 	return os.WriteFile(path, []byte(out), 0o644)
+}
+
+func normalizeCells(cells map[Point]rune) map[Point]rune {
+	w, h := boundsSize(cells)
+	if w == 0 || h == 0 {
+		return map[Point]rune{}
+	}
+	out := make(map[Point]rune, w*h)
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			out[Point{X: x, Y: y}] = ' '
+		}
+	}
+	for p, ch := range cells {
+		if p.X < 0 || p.Y < 0 || p.X >= w || p.Y >= h {
+			continue
+		}
+		out[p] = ch
+	}
+	return out
 }
 
 func main() {
