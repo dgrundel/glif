@@ -29,9 +29,19 @@ const (
 	statusError
 )
 
+type editorMode int
+
+const (
+	modeSprite editorMode = iota
+	modeWidth
+)
+
 type Editor struct {
 	path        string
 	cells       map[Point]rune
+	widthPath   string
+	widthCells  map[Point]rune
+	mode        editorMode
 	cursorX     int
 	cursorY     int
 	quit        bool
@@ -53,13 +63,19 @@ type Editor struct {
 	cursorStyle grid.Style
 }
 
-func NewEditor(path string, cells map[Point]rune) *Editor {
+func NewEditor(path string, cells map[Point]rune, widthCells map[Point]rune) *Editor {
 	if cells == nil {
 		cells = map[Point]rune{}
+	}
+	if widthCells == nil {
+		widthCells = map[Point]rune{}
 	}
 	return &Editor{
 		path:        path,
 		cells:       cells,
+		widthPath:   spriteWidthPath(path),
+		widthCells:  widthCells,
+		mode:        modeSprite,
 		actionMap:   defaultActions(),
 		barStyle:    grid.Style{Fg: grid.TCellColor(tcell.ColorBlack), Bg: grid.TCellColor(tcell.ColorWhite)},
 		spriteStyle: grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorDarkGray)},
@@ -78,6 +94,7 @@ func defaultActions() input.ActionMap {
 		"backspace": "key:backspace",
 		"delete":    "key:delete",
 		"save":      "key:ctrl+s",
+		"toggle":    "key:ctrl+t",
 		"trim":      "key:ctrl+k",
 		"quit":      "key:ctrl+q",
 		"quit_alt":  "key:esc",
@@ -114,7 +131,17 @@ func (e *Editor) Update(dt float64) {
 	}
 
 	if e.pressed("save") {
-		if err := writeSprite(e.path, e.cells); err != nil {
+		if e.mode == modeWidth {
+			spriteW, spriteH := boundsSize(e.cells)
+			if err := writeWidthMask(e.widthPath, e.widthCells, spriteW, spriteH); err != nil {
+				e.status = fmt.Sprintf("save failed: %v", err)
+				e.statusKind = statusError
+			} else {
+				e.ensureWidthCells()
+				e.status = "saved"
+				e.statusKind = statusInfo
+			}
+		} else if err := writeSprite(e.path, e.cells); err != nil {
 			e.status = fmt.Sprintf("save failed: %v", err)
 			e.statusKind = statusError
 		} else {
@@ -127,6 +154,9 @@ func (e *Editor) Update(dt float64) {
 		e.cells = trimOuterWhitespace(e.cells)
 		e.status = "trimmed"
 		e.statusKind = statusInfo
+	}
+	if e.pressed("toggle") {
+		e.toggleMode()
 	}
 
 	pressedLeft := e.pressed("left")
@@ -159,15 +189,15 @@ func (e *Editor) Update(dt float64) {
 	if e.pressed("backspace") {
 		if e.cursorX > 0 {
 			e.cursorX--
-			e.clearCell(e.cursorX, e.cursorY)
+			e.clearActiveCell(e.cursorX, e.cursorY)
 		}
 	}
 	if e.pressed("delete") {
-		e.clearCell(e.cursorX, e.cursorY)
+		e.clearActiveCell(e.cursorX, e.cursorY)
 	}
 
 	for _, r := range e.state.Typed {
-		e.setCell(e.cursorX, e.cursorY, r)
+		e.setActiveCell(e.cursorX, e.cursorY, r)
 		e.cursorX++
 	}
 
@@ -196,11 +226,15 @@ func (e *Editor) Draw(r *render.Renderer) {
 		return
 	}
 
-	pathText := truncateToWidth(e.path, frameW)
+	modeLabel := "Sprite"
+	if e.mode == modeWidth {
+		modeLabel = "Width"
+	}
+	pathText := truncateToWidth(fmt.Sprintf("Mode (Ctrl+T): %s | %s", modeLabel, e.path), frameW)
 	r.Rect(0, 0, frameW, 1, e.barStyle, render.RectOptions{Fill: true, FillRune: ' '})
 	r.DrawText(0, 0, pathText, e.barStyle)
 
-	w, h := boundsSize(e.cells)
+	w, h := e.modeBounds()
 	status := fmt.Sprintf("%dx%d", w, h)
 	if e.status != "" {
 		status = fmt.Sprintf("%s | %s", status, e.status)
@@ -233,13 +267,14 @@ func (e *Editor) Draw(r *render.Renderer) {
 		areaH = maxAreaH
 	}
 
+	activeCells := e.activeCells()
 	for y := 0; y < areaH; y++ {
 		drawY := 1 + y
 		if drawY >= frameH-1 {
 			break
 		}
 		for x := 0; x < areaW && x < frameW; x++ {
-			ch, ok := e.cells[Point{X: x, Y: y}]
+			ch, ok := activeCells[Point{X: x, Y: y}]
 			if !ok {
 				r.Frame.Set(x, drawY, grid.Cell{Ch: ' ', Style: e.areaStyle.Resolve(r.Frame.At(x, drawY).Style)})
 				continue
@@ -251,7 +286,7 @@ func (e *Editor) Draw(r *render.Renderer) {
 	drawX := e.cursorX
 	drawY := 1 + e.cursorY
 	if drawX >= 0 && drawX < frameW && drawY >= 1 && drawY < frameH-1 {
-		ch, ok := e.cells[Point{X: e.cursorX, Y: e.cursorY}]
+		ch, ok := activeCells[Point{X: e.cursorX, Y: e.cursorY}]
 		if !ok {
 			ch = ' '
 		}
@@ -380,18 +415,75 @@ func (e *Editor) handleHeldMovement(dt float64, pressedX, pressedY bool) {
 	}
 }
 
-func (e *Editor) setCell(x, y int, ch rune) {
+func (e *Editor) activeCells() map[Point]rune {
+	if e.mode == modeWidth {
+		return e.widthCells
+	}
+	return e.cells
+}
+
+func (e *Editor) setActiveCell(x, y int, ch rune) {
 	if x < 0 || y < 0 {
+		return
+	}
+	if e.mode == modeWidth {
+		e.widthCells[Point{X: x, Y: y}] = ch
 		return
 	}
 	e.cells[Point{X: x, Y: y}] = ch
 }
 
-func (e *Editor) clearCell(x, y int) {
+func (e *Editor) clearActiveCell(x, y int) {
 	if x < 0 || y < 0 {
 		return
 	}
+	if e.mode == modeWidth {
+		e.widthCells[Point{X: x, Y: y}] = '1'
+		return
+	}
 	delete(e.cells, Point{X: x, Y: y})
+}
+
+func (e *Editor) toggleMode() {
+	if e.mode == modeWidth {
+		e.mode = modeSprite
+		e.status = "mode: sprite"
+		e.statusKind = statusInfo
+		return
+	}
+	e.mode = modeWidth
+	e.ensureWidthCells()
+	e.status = "mode: width"
+	e.statusKind = statusInfo
+}
+
+func (e *Editor) ensureWidthCells() {
+	if e.widthCells == nil {
+		e.widthCells = map[Point]rune{}
+	}
+	spriteW, spriteH := boundsSize(e.cells)
+	if spriteW == 0 || spriteH == 0 {
+		return
+	}
+	for y := 0; y < spriteH; y++ {
+		for x := 0; x < spriteW; x++ {
+			p := Point{X: x, Y: y}
+			if _, ok := e.widthCells[p]; !ok {
+				e.widthCells[p] = '1'
+			}
+		}
+	}
+}
+
+func (e *Editor) modeBounds() (int, int) {
+	if e.mode == modeWidth {
+		w, h := boundsSize(e.cells)
+		if w > 0 && h > 0 {
+			return w, h
+		}
+		return boundsSize(e.widthCells)
+	}
+	return boundsSize(e.cells)
 }
 
 func boundsSize(cells map[Point]rune) (int, int) {
@@ -482,6 +574,79 @@ func readSprite(path string) (map[Point]rune, error) {
 	return out, nil
 }
 
+func spriteWidthPath(spritePath string) string {
+	return strings.TrimSuffix(spritePath, ".sprite") + ".width"
+}
+
+func readWidthMask(path string) (map[Point]rune, bool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	text := string(data)
+	if strings.HasSuffix(text, "\n") {
+		text = strings.TrimRight(text, "\n")
+	}
+	if text == "" {
+		return map[Point]rune{}, true, nil
+	}
+	lines := strings.Split(text, "\n")
+	out := make(map[Point]rune)
+	for y, line := range lines {
+		for x, ch := range []rune(line) {
+			out[Point{X: x, Y: y}] = ch
+		}
+	}
+	return out, true, nil
+}
+
+func writeWidthMask(path string, cells map[Point]rune, spriteW, spriteH int) error {
+	allOnes := true
+	for _, ch := range cells {
+		if ch != '1' {
+			allOnes = false
+			break
+		}
+	}
+	if allOnes {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+
+	w, h := spriteW, spriteH
+	if w == 0 || h == 0 {
+		w, h = boundsSize(cells)
+	}
+	if w == 0 || h == 0 {
+		return os.WriteFile(path, []byte(""), 0o644)
+	}
+	lines := make([][]rune, h)
+	for y := 0; y < h; y++ {
+		line := make([]rune, w)
+		for x := 0; x < w; x++ {
+			line[x] = '1'
+		}
+		lines[y] = line
+	}
+	for p, ch := range cells {
+		if p.X < 0 || p.Y < 0 || p.X >= w || p.Y >= h {
+			continue
+		}
+		lines[p.Y][p.X] = ch
+	}
+	parts := make([]string, h)
+	for y := 0; y < h; y++ {
+		parts[y] = string(lines[y])
+	}
+	out := strings.Join(parts, "\n")
+	return os.WriteFile(path, []byte(out), 0o644)
+}
+
 func writeSprite(path string, cells map[Point]rune) error {
 	w, h := boundsSize(cells)
 	if w == 0 || h == 0 {
@@ -561,7 +726,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	game := NewEditor(path, cells)
+	widthCells, _, err := readWidthMask(spriteWidthPath(path))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	game := NewEditor(path, cells, widthCells)
 	eng, err := engine.New(game, 0)
 	if err != nil {
 		log.Fatal(err)
