@@ -36,40 +36,47 @@ const (
 	modeSprite editorMode = iota
 	modeWidth
 	modeColor
+	modeCollision
+	modePreview
 )
 
 type Editor struct {
-	path         string
-	cells        map[Point]rune
-	widthPath    string
-	widthCells   map[Point]rune
-	colorPath    string
-	colorCells   map[Point]rune
-	colorDefault rune
-	pal          *palette.Palette
-	mode         editorMode
-	cursorX      int
-	cursorY      int
-	quit         bool
-	status       string
-	statusKind   statusKind
-	pendingQuit  bool
-	state        input.State
-	actions      input.ActionState
-	actionMap    input.ActionMap
-	moveAccumX   float64
-	moveAccumY   float64
-	holdLeft     float64
-	holdRight    float64
-	holdUp       float64
-	holdDown     float64
-	barStyle     grid.Style
-	spriteStyle  grid.Style
-	areaStyle    grid.Style
-	cursorStyle  grid.Style
+	path              string
+	cells             map[Point]rune
+	widthPath         string
+	widthCells        map[Point]rune
+	colorPath         string
+	colorCells        map[Point]rune
+	colorDefault      rune
+	collisionPath     string
+	collisionCells    map[Point]rune
+	collisionDefault  rune
+	pal               *palette.Palette
+	mode              editorMode
+	cursorX           int
+	cursorY           int
+	quit              bool
+	status            string
+	statusKind        statusKind
+	pendingQuit       bool
+	state             input.State
+	actions           input.ActionState
+	actionMap         input.ActionMap
+	moveAccumX        float64
+	moveAccumY        float64
+	holdLeft          float64
+	holdRight         float64
+	holdUp            float64
+	holdDown          float64
+	barStyle          grid.Style
+	spriteStyle       grid.Style
+	areaStyle         grid.Style
+	cursorStyle       grid.Style
+	collisionStyle    grid.Style
+	previewErrorStyle grid.Style
 }
 
-func NewEditor(path string, cells map[Point]rune, widthCells map[Point]rune, colorCells map[Point]rune, colorDefault rune, pal *palette.Palette, palErr string) *Editor {
+func NewEditor(path string, cells map[Point]rune, widthCells map[Point]rune, colorCells map[Point]rune, colorDefault rune, collisionCells map[Point]rune, collisionDefault rune, pal *palette.Palette, palErr string) *Editor {
 	if cells == nil {
 		cells = map[Point]rune{}
 	}
@@ -79,21 +86,29 @@ func NewEditor(path string, cells map[Point]rune, widthCells map[Point]rune, col
 	if colorCells == nil {
 		colorCells = map[Point]rune{}
 	}
+	if collisionCells == nil {
+		collisionCells = map[Point]rune{}
+	}
 	editor := &Editor{
-		path:         path,
-		cells:        cells,
-		widthPath:    spriteWidthPath(path),
-		widthCells:   widthCells,
-		colorPath:    spriteColorPath(path),
-		colorCells:   colorCells,
-		colorDefault: colorDefault,
-		pal:          pal,
-		mode:         modeSprite,
-		actionMap:    defaultActions(),
-		barStyle:     grid.Style{Fg: grid.TCellColor(tcell.ColorBlack), Bg: grid.TCellColor(tcell.ColorWhite)},
-		spriteStyle:  grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorDarkGray)},
-		areaStyle:    grid.Style{Fg: grid.TCellColor(tcell.ColorReset), Bg: grid.TCellColor(tcell.ColorLightGreen)},
-		cursorStyle:  grid.Style{Fg: grid.TCellColor(tcell.ColorBlack), Bg: grid.TCellColor(tcell.ColorWhite)},
+		path:              path,
+		cells:             cells,
+		widthPath:         spriteWidthPath(path),
+		widthCells:        widthCells,
+		colorPath:         spriteColorPath(path),
+		colorCells:        colorCells,
+		colorDefault:      colorDefault,
+		collisionPath:     spriteCollisionPath(path),
+		collisionCells:    collisionCells,
+		collisionDefault:  collisionDefault,
+		pal:               pal,
+		mode:              modeSprite,
+		actionMap:         defaultActions(),
+		barStyle:          grid.Style{Fg: grid.TCellColor(tcell.ColorBlack), Bg: grid.TCellColor(tcell.ColorWhite)},
+		spriteStyle:       grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorDarkGray)},
+		areaStyle:         grid.Style{Fg: grid.TCellColor(tcell.ColorReset), Bg: grid.TCellColor(tcell.ColorLightGreen)},
+		cursorStyle:       grid.Style{Fg: grid.TCellColor(tcell.ColorBlack), Bg: grid.TCellColor(tcell.ColorWhite)},
+		collisionStyle:    grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorRed)},
+		previewErrorStyle: grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorRed)},
 	}
 	if palErr != "" {
 		editor.status = fmt.Sprintf("palette: %s", palErr)
@@ -166,6 +181,16 @@ func (e *Editor) Update(dt float64) {
 				e.statusKind = statusError
 			} else {
 				e.ensureColorCells()
+				e.status = "saved"
+				e.statusKind = statusInfo
+			}
+		} else if e.mode == modeCollision {
+			spriteW, spriteH := boundsSize(e.cells)
+			if err := writeCollisionMask(e.collisionPath, e.collisionCells, spriteW, spriteH, e.collisionDefault); err != nil {
+				e.status = fmt.Sprintf("save failed: %v", err)
+				e.statusKind = statusError
+			} else {
+				e.ensureCollisionCells()
 				e.status = "saved"
 				e.statusKind = statusInfo
 			}
@@ -261,6 +286,12 @@ func (e *Editor) Draw(r *render.Renderer) {
 	if e.mode == modeColor {
 		modeLabel = "Color"
 	}
+	if e.mode == modeCollision {
+		modeLabel = "Collision"
+	}
+	if e.mode == modePreview {
+		modeLabel = "Preview"
+	}
 	pathText := truncateToWidth(fmt.Sprintf("Mode (Ctrl+T): %s | %s", modeLabel, e.path), frameW)
 	r.Rect(0, 0, frameW, 1, e.barStyle, render.RectOptions{Fill: true, FillRune: ' '})
 	r.DrawText(0, 0, pathText, e.barStyle)
@@ -299,27 +330,46 @@ func (e *Editor) Draw(r *render.Renderer) {
 	}
 
 	activeCells := e.activeCells()
-	for y := 0; y < areaH; y++ {
-		drawY := 1 + y
-		if drawY >= frameH-1 {
-			break
+	if e.mode == modePreview {
+		sprite := e.previewSprite()
+		if sprite != nil {
+			r.DrawSprite(0, 1, sprite)
 		}
-		for x := 0; x < areaW && x < frameW; x++ {
-			if e.mode == modeColor {
-				key, ok := activeCells[Point{X: x, Y: y}]
-				if !ok {
-					key = e.colorDefault
+	} else {
+		for y := 0; y < areaH; y++ {
+			drawY := 1 + y
+			if drawY >= frameH-1 {
+				break
+			}
+			for x := 0; x < areaW && x < frameW; x++ {
+				if e.mode == modeColor {
+					key, ok := activeCells[Point{X: x, Y: y}]
+					if !ok {
+						key = e.colorDefault
+					}
+					style := e.colorStyleFor(key, r.Frame.At(x, drawY).Style)
+					r.Frame.Set(x, drawY, grid.Cell{Ch: key, Style: style})
+					continue
 				}
-				style := e.colorStyleFor(key, r.Frame.At(x, drawY).Style)
-				r.Frame.Set(x, drawY, grid.Cell{Ch: key, Style: style})
-				continue
+				if e.mode == modeCollision {
+					key, ok := activeCells[Point{X: x, Y: y}]
+					if !ok {
+						key = e.collisionDefault
+					}
+					style := e.areaStyle.Resolve(r.Frame.At(x, drawY).Style)
+					if isCollisionKey(key) {
+						style = e.collisionStyle.Resolve(r.Frame.At(x, drawY).Style)
+					}
+					r.Frame.Set(x, drawY, grid.Cell{Ch: key, Style: style})
+					continue
+				}
+				ch, ok := activeCells[Point{X: x, Y: y}]
+				if !ok {
+					r.Frame.Set(x, drawY, grid.Cell{Ch: ' ', Style: e.areaStyle.Resolve(r.Frame.At(x, drawY).Style)})
+					continue
+				}
+				r.Frame.Set(x, drawY, grid.Cell{Ch: ch, Style: e.spriteStyle.Resolve(r.Frame.At(x, drawY).Style)})
 			}
-			ch, ok := activeCells[Point{X: x, Y: y}]
-			if !ok {
-				r.Frame.Set(x, drawY, grid.Cell{Ch: ' ', Style: e.areaStyle.Resolve(r.Frame.At(x, drawY).Style)})
-				continue
-			}
-			r.Frame.Set(x, drawY, grid.Cell{Ch: ch, Style: e.spriteStyle.Resolve(r.Frame.At(x, drawY).Style)})
 		}
 	}
 
@@ -330,6 +380,10 @@ func (e *Editor) Draw(r *render.Renderer) {
 		if !ok {
 			if e.mode == modeColor {
 				ch = e.colorDefault
+			} else if e.mode == modeCollision {
+				ch = e.collisionDefault
+			} else if e.mode == modePreview {
+				ch = ' '
 			} else {
 				ch = ' '
 			}
@@ -466,6 +520,12 @@ func (e *Editor) activeCells() map[Point]rune {
 	if e.mode == modeColor {
 		return e.colorCells
 	}
+	if e.mode == modeCollision {
+		return e.collisionCells
+	}
+	if e.mode == modePreview {
+		return e.cells
+	}
 	return e.cells
 }
 
@@ -479,6 +539,10 @@ func (e *Editor) setActiveCell(x, y int, ch rune) {
 	}
 	if e.mode == modeColor {
 		e.colorCells[Point{X: x, Y: y}] = ch
+		return
+	}
+	if e.mode == modeCollision {
+		e.collisionCells[Point{X: x, Y: y}] = ch
 		return
 	}
 	e.cells[Point{X: x, Y: y}] = ch
@@ -496,6 +560,10 @@ func (e *Editor) clearActiveCell(x, y int) {
 		e.colorCells[Point{X: x, Y: y}] = e.colorDefault
 		return
 	}
+	if e.mode == modeCollision {
+		e.collisionCells[Point{X: x, Y: y}] = e.collisionDefault
+		return
+	}
 	delete(e.cells, Point{X: x, Y: y})
 }
 
@@ -508,6 +576,19 @@ func (e *Editor) toggleMode() {
 		return
 	}
 	if e.mode == modeColor {
+		e.mode = modeCollision
+		e.ensureCollisionCells()
+		e.status = "mode: collision"
+		e.statusKind = statusInfo
+		return
+	}
+	if e.mode == modeCollision {
+		e.mode = modePreview
+		e.status = "mode: preview"
+		e.statusKind = statusInfo
+		return
+	}
+	if e.mode == modePreview {
 		e.mode = modeSprite
 		e.status = "mode: sprite"
 		e.statusKind = statusInfo
@@ -555,13 +636,31 @@ func (e *Editor) ensureColorCells() {
 	}
 }
 
+func (e *Editor) ensureCollisionCells() {
+	if e.collisionCells == nil {
+		e.collisionCells = map[Point]rune{}
+	}
+	spriteW, spriteH := boundsSize(e.cells)
+	if spriteW == 0 || spriteH == 0 {
+		return
+	}
+	for y := 0; y < spriteH; y++ {
+		for x := 0; x < spriteW; x++ {
+			p := Point{X: x, Y: y}
+			if _, ok := e.collisionCells[p]; !ok {
+				e.collisionCells[p] = e.collisionDefault
+			}
+		}
+	}
+}
+
 func (e *Editor) colorStyleFor(key rune, base grid.Style) grid.Style {
 	if e.pal == nil {
-		return grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorRed)}.Resolve(base)
+		return e.previewErrorStyle.Resolve(base)
 	}
 	entry, err := e.pal.Entry(key)
 	if err != nil {
-		return grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorRed)}.Resolve(base)
+		return e.previewErrorStyle.Resolve(base)
 	}
 	return entry.Style.Resolve(base)
 }
@@ -580,6 +679,16 @@ func (e *Editor) modeBounds() (int, int) {
 			return w, h
 		}
 		return boundsSize(e.colorCells)
+	}
+	if e.mode == modeCollision {
+		w, h := boundsSize(e.cells)
+		if w > 0 && h > 0 {
+			return w, h
+		}
+		return boundsSize(e.collisionCells)
+	}
+	if e.mode == modePreview {
+		return boundsSize(e.cells)
 	}
 	return boundsSize(e.cells)
 }
@@ -680,6 +789,10 @@ func spriteColorPath(spritePath string) string {
 	return strings.TrimSuffix(spritePath, ".sprite") + ".color"
 }
 
+func spriteCollisionPath(spritePath string) string {
+	return strings.TrimSuffix(spritePath, ".sprite") + ".collision"
+}
+
 func readWidthMask(path string) (map[Point]rune, bool, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -706,6 +819,31 @@ func readWidthMask(path string) (map[Point]rune, bool, error) {
 }
 
 func readColorMask(path string, spriteW, spriteH int, fill rune) (map[Point]rune, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return generateFilledCells(spriteW, spriteH, fill), nil
+		}
+		return nil, err
+	}
+	text := string(data)
+	if strings.HasSuffix(text, "\n") {
+		text = strings.TrimRight(text, "\n")
+	}
+	if text == "" {
+		return map[Point]rune{}, nil
+	}
+	lines := strings.Split(text, "\n")
+	out := make(map[Point]rune)
+	for y, line := range lines {
+		for x, ch := range []rune(line) {
+			out[Point{X: x, Y: y}] = ch
+		}
+	}
+	return out, nil
+}
+
+func readCollisionMask(path string, spriteW, spriteH int, fill rune) (map[Point]rune, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -757,6 +895,50 @@ func writeWidthMask(path string, cells map[Point]rune, spriteW, spriteH int) err
 		line := make([]rune, w)
 		for x := 0; x < w; x++ {
 			line[x] = '1'
+		}
+		lines[y] = line
+	}
+	for p, ch := range cells {
+		if p.X < 0 || p.Y < 0 || p.X >= w || p.Y >= h {
+			continue
+		}
+		lines[p.Y][p.X] = ch
+	}
+	parts := make([]string, h)
+	for y := 0; y < h; y++ {
+		parts[y] = string(lines[y])
+	}
+	out := strings.Join(parts, "\n")
+	return os.WriteFile(path, []byte(out), 0o644)
+}
+
+func writeCollisionMask(path string, cells map[Point]rune, spriteW, spriteH int, fill rune) error {
+	hasCollisions := false
+	for _, ch := range cells {
+		if isCollisionKey(ch) {
+			hasCollisions = true
+			break
+		}
+	}
+	if !hasCollisions {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+
+	w, h := spriteW, spriteH
+	if w == 0 || h == 0 {
+		w, h = boundsSize(cells)
+	}
+	if w == 0 || h == 0 {
+		return os.WriteFile(path, []byte(""), 0o644)
+	}
+	lines := make([][]rune, h)
+	for y := 0; y < h; y++ {
+		line := make([]rune, w)
+		for x := 0; x < w; x++ {
+			line[x] = fill
 		}
 		lines[y] = line
 	}
@@ -862,6 +1044,114 @@ func generateFilledCells(w, h int, fill rune) map[Point]rune {
 		}
 	}
 	return out
+}
+
+func isCollisionKey(ch rune) bool {
+	return ch != ' ' && ch != '.'
+}
+
+func (e *Editor) previewSprite() *render.Sprite {
+	w, h := boundsSize(e.cells)
+	if w == 0 || h == 0 {
+		return nil
+	}
+
+	spriteLines := make([][]rune, h)
+	for y := 0; y < h; y++ {
+		row := make([]rune, w)
+		for x := 0; x < w; x++ {
+			row[x] = ' '
+		}
+		spriteLines[y] = row
+	}
+	for p, ch := range e.cells {
+		if p.X < 0 || p.Y < 0 || p.X >= w || p.Y >= h {
+			continue
+		}
+		spriteLines[p.Y][p.X] = ch
+	}
+
+	widthMask := make([][]int, h)
+	cellW := 0
+	for y := 0; y < h; y++ {
+		widthMask[y] = make([]int, w)
+		rowWidth := 0
+		for x := 0; x < w; x++ {
+			width := 1
+			if ch, ok := e.widthCells[Point{X: x, Y: y}]; ok {
+				if parsed, err := parseWidthRune(ch); err == nil {
+					width = parsed
+				}
+			}
+			widthMask[y][x] = width
+			rowWidth += width
+		}
+		if rowWidth > cellW {
+			cellW = rowWidth
+		}
+	}
+
+	cells := make([]grid.Cell, cellW*h)
+	for y := 0; y < h; y++ {
+		col := 0
+		for x := 0; x < w; x++ {
+			spr := runeAt(spriteLines[y], x)
+			mask := e.colorDefault
+			if ch, ok := e.colorCells[Point{X: x, Y: y}]; ok {
+				mask = ch
+			}
+			width := widthMask[y][x]
+
+			visible := mask != ' ' && mask != '.'
+			style := e.previewErrorStyle
+			if visible {
+				if e.pal != nil {
+					if entry, err := e.pal.Entry(mask); err == nil {
+						style = entry.Style
+						if entry.Transparent {
+							visible = false
+						}
+					}
+				}
+			}
+
+			for i := 0; i < width; i++ {
+				idx := y*cellW + col
+				col++
+				if !visible {
+					continue
+				}
+				if i == 0 {
+					cells[idx] = grid.Cell{Ch: spr, Style: style}
+				} else {
+					cells[idx] = grid.Cell{Ch: 0, Style: style, Skip: true}
+				}
+			}
+		}
+		for col < cellW {
+			col++
+		}
+	}
+
+	return &render.Sprite{W: cellW, H: h, Cells: cells, Source: e.path}
+}
+
+func parseWidthRune(ch rune) (int, error) {
+	switch ch {
+	case '1':
+		return 1, nil
+	case '2':
+		return 2, nil
+	default:
+		return 0, fmt.Errorf("invalid width %q (expected 1 or 2)", string(ch))
+	}
+}
+
+func runeAt(line []rune, x int) rune {
+	if x < 0 || x >= len(line) {
+		return ' '
+	}
+	return line[x]
 }
 
 func resolvePalettePath(basePath string) string {
@@ -979,7 +1269,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	game := NewEditor(path, cells, widthCells, colorCells, colorDefault, pal, palErr)
+	collisionDefault := rune('.')
+	collisionCells, err := readCollisionMask(spriteCollisionPath(path), spriteW, spriteH, collisionDefault)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	game := NewEditor(path, cells, widthCells, colorCells, colorDefault, collisionCells, collisionDefault, pal, palErr)
 	eng, err := engine.New(game, 0)
 	if err != nil {
 		log.Fatal(err)
