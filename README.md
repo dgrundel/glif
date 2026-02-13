@@ -228,11 +228,6 @@ func (g *Game) UpdateActionState(state input.ActionState) {
 
 The engine uses a fixed timestep loop. When you pass `0` to `engine.New`, the default tick is ~60 FPS (16ms).
 
-## Debug tips
-
-- FPS overlay: `eng.ShowFPS = true`
-- Sprite preview tool: `go run ./utils/spritepreview path/to/folder`
-
 ## Troubleshooting
 
 - **Missing palette key**: update the palette or color mask to include the required key.
@@ -262,7 +257,13 @@ Example `.map`:
 
 Sprite names in `.tiles` are base paths (same as `assets.LoadSprite`).
 
-## Mask generator
+## Debug tips
+
+- FPS overlay: `eng.ShowFPS = true`
+
+## Utils
+
+### Mask generator
 
 Generate a color mask or collision mask from a sprite:
 
@@ -272,7 +273,7 @@ go run ./utils/genmask --collision path/to/sprite.sprite
 go run ./utils/genmask --color --collision path/to/sprite.sprite
 ```
 
-## Sprite preview
+### Sprite preview
 
 Preview one or more masked sprites in a grid with filenames and scroll using the arrow keys:
 
@@ -281,3 +282,17 @@ go run ./utils/spritepreview path/to/sprite1 path/to/sprite2
 go run ./utils/spritepreview path/to/folder
 go run ./utils/spritepreview -r path/to/folder
 ```
+
+### Sprite editor
+
+Edit a sprite and its associated masks:
+
+```
+go run ./utils/spriteeditor path/to/name.sprite
+```
+
+Modes (Ctrl+T to cycle): Sprite, Width, Color, Collision, Preview.
+
+Keys: Ctrl+S save, Ctrl+K trim whitespace, Ctrl+Q or Esc twice to quit.
+
+Preview mode renders the sprite using the current color mask + palette and width mask.
