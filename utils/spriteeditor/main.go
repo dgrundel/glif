@@ -11,6 +11,7 @@ import (
 	"github.com/dgrundel/glif/engine"
 	"github.com/dgrundel/glif/grid"
 	"github.com/dgrundel/glif/input"
+	"github.com/dgrundel/glif/palette"
 	"github.com/dgrundel/glif/render"
 	"github.com/gdamore/tcell/v3"
 )
@@ -34,54 +35,71 @@ type editorMode int
 const (
 	modeSprite editorMode = iota
 	modeWidth
+	modeColor
 )
 
 type Editor struct {
-	path        string
-	cells       map[Point]rune
-	widthPath   string
-	widthCells  map[Point]rune
-	mode        editorMode
-	cursorX     int
-	cursorY     int
-	quit        bool
-	status      string
-	statusKind  statusKind
-	pendingQuit bool
-	state       input.State
-	actions     input.ActionState
-	actionMap   input.ActionMap
-	moveAccumX  float64
-	moveAccumY  float64
-	holdLeft    float64
-	holdRight   float64
-	holdUp      float64
-	holdDown    float64
-	barStyle    grid.Style
-	spriteStyle grid.Style
-	areaStyle   grid.Style
-	cursorStyle grid.Style
+	path         string
+	cells        map[Point]rune
+	widthPath    string
+	widthCells   map[Point]rune
+	colorPath    string
+	colorCells   map[Point]rune
+	colorDefault rune
+	pal          *palette.Palette
+	mode         editorMode
+	cursorX      int
+	cursorY      int
+	quit         bool
+	status       string
+	statusKind   statusKind
+	pendingQuit  bool
+	state        input.State
+	actions      input.ActionState
+	actionMap    input.ActionMap
+	moveAccumX   float64
+	moveAccumY   float64
+	holdLeft     float64
+	holdRight    float64
+	holdUp       float64
+	holdDown     float64
+	barStyle     grid.Style
+	spriteStyle  grid.Style
+	areaStyle    grid.Style
+	cursorStyle  grid.Style
 }
 
-func NewEditor(path string, cells map[Point]rune, widthCells map[Point]rune) *Editor {
+func NewEditor(path string, cells map[Point]rune, widthCells map[Point]rune, colorCells map[Point]rune, colorDefault rune, pal *palette.Palette, palErr string) *Editor {
 	if cells == nil {
 		cells = map[Point]rune{}
 	}
 	if widthCells == nil {
 		widthCells = map[Point]rune{}
 	}
-	return &Editor{
-		path:        path,
-		cells:       cells,
-		widthPath:   spriteWidthPath(path),
-		widthCells:  widthCells,
-		mode:        modeSprite,
-		actionMap:   defaultActions(),
-		barStyle:    grid.Style{Fg: grid.TCellColor(tcell.ColorBlack), Bg: grid.TCellColor(tcell.ColorWhite)},
-		spriteStyle: grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorDarkGray)},
-		areaStyle:   grid.Style{Fg: grid.TCellColor(tcell.ColorReset), Bg: grid.TCellColor(tcell.ColorLightGreen)},
-		cursorStyle: grid.Style{Fg: grid.TCellColor(tcell.ColorBlack), Bg: grid.TCellColor(tcell.ColorWhite)},
+	if colorCells == nil {
+		colorCells = map[Point]rune{}
 	}
+	editor := &Editor{
+		path:         path,
+		cells:        cells,
+		widthPath:    spriteWidthPath(path),
+		widthCells:   widthCells,
+		colorPath:    spriteColorPath(path),
+		colorCells:   colorCells,
+		colorDefault: colorDefault,
+		pal:          pal,
+		mode:         modeSprite,
+		actionMap:    defaultActions(),
+		barStyle:     grid.Style{Fg: grid.TCellColor(tcell.ColorBlack), Bg: grid.TCellColor(tcell.ColorWhite)},
+		spriteStyle:  grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorDarkGray)},
+		areaStyle:    grid.Style{Fg: grid.TCellColor(tcell.ColorReset), Bg: grid.TCellColor(tcell.ColorLightGreen)},
+		cursorStyle:  grid.Style{Fg: grid.TCellColor(tcell.ColorBlack), Bg: grid.TCellColor(tcell.ColorWhite)},
+	}
+	if palErr != "" {
+		editor.status = fmt.Sprintf("palette: %s", palErr)
+		editor.statusKind = statusWarn
+	}
+	return editor
 }
 
 func defaultActions() input.ActionMap {
@@ -138,6 +156,16 @@ func (e *Editor) Update(dt float64) {
 				e.statusKind = statusError
 			} else {
 				e.ensureWidthCells()
+				e.status = "saved"
+				e.statusKind = statusInfo
+			}
+		} else if e.mode == modeColor {
+			spriteW, spriteH := boundsSize(e.cells)
+			if err := writeColorMask(e.colorPath, e.colorCells, spriteW, spriteH, e.colorDefault); err != nil {
+				e.status = fmt.Sprintf("save failed: %v", err)
+				e.statusKind = statusError
+			} else {
+				e.ensureColorCells()
 				e.status = "saved"
 				e.statusKind = statusInfo
 			}
@@ -230,6 +258,9 @@ func (e *Editor) Draw(r *render.Renderer) {
 	if e.mode == modeWidth {
 		modeLabel = "Width"
 	}
+	if e.mode == modeColor {
+		modeLabel = "Color"
+	}
 	pathText := truncateToWidth(fmt.Sprintf("Mode (Ctrl+T): %s | %s", modeLabel, e.path), frameW)
 	r.Rect(0, 0, frameW, 1, e.barStyle, render.RectOptions{Fill: true, FillRune: ' '})
 	r.DrawText(0, 0, pathText, e.barStyle)
@@ -274,6 +305,15 @@ func (e *Editor) Draw(r *render.Renderer) {
 			break
 		}
 		for x := 0; x < areaW && x < frameW; x++ {
+			if e.mode == modeColor {
+				key, ok := activeCells[Point{X: x, Y: y}]
+				if !ok {
+					key = e.colorDefault
+				}
+				style := e.colorStyleFor(key, r.Frame.At(x, drawY).Style)
+				r.Frame.Set(x, drawY, grid.Cell{Ch: key, Style: style})
+				continue
+			}
 			ch, ok := activeCells[Point{X: x, Y: y}]
 			if !ok {
 				r.Frame.Set(x, drawY, grid.Cell{Ch: ' ', Style: e.areaStyle.Resolve(r.Frame.At(x, drawY).Style)})
@@ -288,7 +328,11 @@ func (e *Editor) Draw(r *render.Renderer) {
 	if drawX >= 0 && drawX < frameW && drawY >= 1 && drawY < frameH-1 {
 		ch, ok := activeCells[Point{X: e.cursorX, Y: e.cursorY}]
 		if !ok {
-			ch = ' '
+			if e.mode == modeColor {
+				ch = e.colorDefault
+			} else {
+				ch = ' '
+			}
 		}
 		base := r.Frame.At(drawX, drawY).Style
 		r.Frame.Set(drawX, drawY, grid.Cell{Ch: ch, Style: e.cursorStyle.Resolve(base)})
@@ -419,6 +463,9 @@ func (e *Editor) activeCells() map[Point]rune {
 	if e.mode == modeWidth {
 		return e.widthCells
 	}
+	if e.mode == modeColor {
+		return e.colorCells
+	}
 	return e.cells
 }
 
@@ -428,6 +475,10 @@ func (e *Editor) setActiveCell(x, y int, ch rune) {
 	}
 	if e.mode == modeWidth {
 		e.widthCells[Point{X: x, Y: y}] = ch
+		return
+	}
+	if e.mode == modeColor {
+		e.colorCells[Point{X: x, Y: y}] = ch
 		return
 	}
 	e.cells[Point{X: x, Y: y}] = ch
@@ -441,11 +492,22 @@ func (e *Editor) clearActiveCell(x, y int) {
 		e.widthCells[Point{X: x, Y: y}] = '1'
 		return
 	}
+	if e.mode == modeColor {
+		e.colorCells[Point{X: x, Y: y}] = e.colorDefault
+		return
+	}
 	delete(e.cells, Point{X: x, Y: y})
 }
 
 func (e *Editor) toggleMode() {
 	if e.mode == modeWidth {
+		e.mode = modeColor
+		e.ensureColorCells()
+		e.status = "mode: color"
+		e.statusKind = statusInfo
+		return
+	}
+	if e.mode == modeColor {
 		e.mode = modeSprite
 		e.status = "mode: sprite"
 		e.statusKind = statusInfo
@@ -475,6 +537,35 @@ func (e *Editor) ensureWidthCells() {
 	}
 }
 
+func (e *Editor) ensureColorCells() {
+	if e.colorCells == nil {
+		e.colorCells = map[Point]rune{}
+	}
+	spriteW, spriteH := boundsSize(e.cells)
+	if spriteW == 0 || spriteH == 0 {
+		return
+	}
+	for y := 0; y < spriteH; y++ {
+		for x := 0; x < spriteW; x++ {
+			p := Point{X: x, Y: y}
+			if _, ok := e.colorCells[p]; !ok {
+				e.colorCells[p] = e.colorDefault
+			}
+		}
+	}
+}
+
+func (e *Editor) colorStyleFor(key rune, base grid.Style) grid.Style {
+	if e.pal == nil {
+		return grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorRed)}.Resolve(base)
+	}
+	entry, err := e.pal.Entry(key)
+	if err != nil {
+		return grid.Style{Fg: grid.TCellColor(tcell.ColorWhite), Bg: grid.TCellColor(tcell.ColorRed)}.Resolve(base)
+	}
+	return entry.Style.Resolve(base)
+}
+
 func (e *Editor) modeBounds() (int, int) {
 	if e.mode == modeWidth {
 		w, h := boundsSize(e.cells)
@@ -482,6 +573,13 @@ func (e *Editor) modeBounds() (int, int) {
 			return w, h
 		}
 		return boundsSize(e.widthCells)
+	}
+	if e.mode == modeColor {
+		w, h := boundsSize(e.cells)
+		if w > 0 && h > 0 {
+			return w, h
+		}
+		return boundsSize(e.colorCells)
 	}
 	return boundsSize(e.cells)
 }
@@ -578,6 +676,10 @@ func spriteWidthPath(spritePath string) string {
 	return strings.TrimSuffix(spritePath, ".sprite") + ".width"
 }
 
+func spriteColorPath(spritePath string) string {
+	return strings.TrimSuffix(spritePath, ".sprite") + ".color"
+}
+
 func readWidthMask(path string) (map[Point]rune, bool, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -601,6 +703,31 @@ func readWidthMask(path string) (map[Point]rune, bool, error) {
 		}
 	}
 	return out, true, nil
+}
+
+func readColorMask(path string, spriteW, spriteH int, fill rune) (map[Point]rune, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return generateFilledCells(spriteW, spriteH, fill), nil
+		}
+		return nil, err
+	}
+	text := string(data)
+	if strings.HasSuffix(text, "\n") {
+		text = strings.TrimRight(text, "\n")
+	}
+	if text == "" {
+		return map[Point]rune{}, nil
+	}
+	lines := strings.Split(text, "\n")
+	out := make(map[Point]rune)
+	for y, line := range lines {
+		for x, ch := range []rune(line) {
+			out[Point{X: x, Y: y}] = ch
+		}
+	}
+	return out, nil
 }
 
 func writeWidthMask(path string, cells map[Point]rune, spriteW, spriteH int) error {
@@ -630,6 +757,36 @@ func writeWidthMask(path string, cells map[Point]rune, spriteW, spriteH int) err
 		line := make([]rune, w)
 		for x := 0; x < w; x++ {
 			line[x] = '1'
+		}
+		lines[y] = line
+	}
+	for p, ch := range cells {
+		if p.X < 0 || p.Y < 0 || p.X >= w || p.Y >= h {
+			continue
+		}
+		lines[p.Y][p.X] = ch
+	}
+	parts := make([]string, h)
+	for y := 0; y < h; y++ {
+		parts[y] = string(lines[y])
+	}
+	out := strings.Join(parts, "\n")
+	return os.WriteFile(path, []byte(out), 0o644)
+}
+
+func writeColorMask(path string, cells map[Point]rune, spriteW, spriteH int, fill rune) error {
+	w, h := spriteW, spriteH
+	if w == 0 || h == 0 {
+		w, h = boundsSize(cells)
+	}
+	if w == 0 || h == 0 {
+		return os.WriteFile(path, []byte(""), 0o644)
+	}
+	lines := make([][]rune, h)
+	for y := 0; y < h; y++ {
+		line := make([]rune, w)
+		for x := 0; x < w; x++ {
+			line[x] = fill
 		}
 		lines[y] = line
 	}
@@ -694,6 +851,77 @@ func normalizeCells(cells map[Point]rune) map[Point]rune {
 	return out
 }
 
+func generateFilledCells(w, h int, fill rune) map[Point]rune {
+	if w <= 0 || h <= 0 {
+		return map[Point]rune{}
+	}
+	out := make(map[Point]rune, w*h)
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			out[Point{X: x, Y: y}] = fill
+		}
+	}
+	return out
+}
+
+func resolvePalettePath(basePath string) string {
+	candidate := basePath + ".palette"
+	if fileExists(candidate) {
+		return candidate
+	}
+	dir := filepath.Dir(basePath)
+	for {
+		candidate = filepath.Join(dir, "default.palette")
+		if fileExists(candidate) {
+			return candidate
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return candidate
+		}
+		dir = parent
+	}
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func firstPaletteKey(path string) (rune, bool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, false, nil
+		}
+		return 0, false, err
+	}
+	text := strings.TrimRight(string(data), "\n")
+	if text == "" {
+		return 0, false, nil
+	}
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		if idx := strings.Index(line, "//"); idx >= 0 {
+			line = line[:idx]
+		}
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+		keyRunes := []rune(fields[0])
+		if len(keyRunes) != 1 {
+			return 0, false, fmt.Errorf("palette key must be single rune on line %d", i+1)
+		}
+		return keyRunes[0], true, nil
+	}
+	return 0, false, nil
+}
+
 func main() {
 	flag.Parse()
 	args := flag.Args()
@@ -731,7 +959,27 @@ func main() {
 		log.Fatal(err)
 	}
 
-	game := NewEditor(path, cells, widthCells)
+	spriteW, spriteH := boundsSize(cells)
+	palPath := resolvePalettePath(strings.TrimSuffix(path, ".sprite"))
+	colorDefault := rune('a')
+	if key, ok, err := firstPaletteKey(palPath); err != nil {
+		log.Fatal(err)
+	} else if ok {
+		colorDefault = key
+	}
+	var pal *palette.Palette
+	palErr := ""
+	if loaded, err := palette.Load(palPath); err != nil {
+		palErr = err.Error()
+	} else {
+		pal = loaded
+	}
+	colorCells, err := readColorMask(spriteColorPath(path), spriteW, spriteH, colorDefault)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	game := NewEditor(path, cells, widthCells, colorCells, colorDefault, pal, palErr)
 	eng, err := engine.New(game, 0)
 	if err != nil {
 		log.Fatal(err)
