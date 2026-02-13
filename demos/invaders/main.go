@@ -1,0 +1,385 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"math"
+
+	"github.com/dgrundel/glif/assets"
+	"github.com/dgrundel/glif/collision"
+	"github.com/dgrundel/glif/ecs"
+	"github.com/dgrundel/glif/engine"
+	"github.com/dgrundel/glif/grid"
+	"github.com/dgrundel/glif/input"
+	"github.com/dgrundel/glif/palette"
+	"github.com/dgrundel/glif/render"
+)
+
+const (
+	shipSpeed    = 30.0
+	enemySpeed   = 6.0
+	bulletSpeed  = 45.0
+	fireCooldown = 0.35
+	enemyRows    = 2
+	enemyGapX    = 2
+	enemyGapY    = 2
+	enemyStartY  = 2
+)
+
+type Game struct {
+	world   *ecs.World
+	ship    ecs.Entity
+	enemies []ecs.Entity
+	bullets []ecs.Entity
+
+	shipSprite   *render.Sprite
+	enemySprite  *render.Sprite
+	bulletSprite *render.Sprite
+
+	screenW int
+	screenH int
+
+	enemyDir      float64
+	fireTimer     float64
+	shipPlaced    bool
+	enemiesPlaced bool
+	score         int
+
+	binds      input.ActionMap
+	actions    input.ActionState
+	bg         grid.Style
+	scoreStyle grid.Style
+	quit       bool
+}
+
+func NewGame() *Game {
+	pal, err := palette.Load("demos/invaders/assets/default.palette")
+	if err != nil {
+		log.Fatal(err)
+	}
+	bg, err := pal.Style('k')
+	if err != nil {
+		log.Fatal(err)
+	}
+	scoreStyle, err := pal.Style('s')
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	world := ecs.NewWorld()
+	shipSprite := assets.MustLoadSprite("demos/invaders/assets/ship")
+	enemySprite := assets.MustLoadSprite("demos/invaders/assets/enemy")
+	bulletSprite := assets.MustLoadSprite("demos/invaders/assets/bullet")
+
+	ship := world.NewEntity()
+	world.AddPosition(ship, 0, 0)
+	world.AddVelocity(ship, 0, 0)
+	world.AddSprite(ship, shipSprite, 1)
+
+	return &Game{
+		world:        world,
+		ship:         ship,
+		shipSprite:   shipSprite,
+		enemySprite:  enemySprite,
+		bulletSprite: bulletSprite,
+		enemyDir:     1,
+		binds: input.ActionMap{
+			"move_left":  "key:left",
+			"move_right": "key:right",
+			"shoot":      " ",
+			"quit":       "key:esc",
+			"quit_alt":   "key:ctrl+c",
+		},
+		bg:         bg,
+		scoreStyle: scoreStyle,
+	}
+}
+
+func (g *Game) Update(dt float64) {
+	if g.pressed("quit") || g.pressed("quit_alt") {
+		g.quit = true
+		return
+	}
+
+	if g.fireTimer > 0 {
+		g.fireTimer -= dt
+		if g.fireTimer < 0 {
+			g.fireTimer = 0
+		}
+	}
+
+	g.applyShipMovement()
+	g.updateEnemyVelocities()
+
+	if g.pressed("shoot") && g.fireTimer == 0 {
+		g.spawnBullet()
+		g.fireTimer = fireCooldown
+	}
+
+	g.world.Update(dt)
+	g.clampShip()
+	g.resolveHits()
+	g.cleanupBullets()
+}
+
+func (g *Game) Draw(r *render.Renderer) {
+	g.world.Draw(r)
+	r.DrawText(0, 0, fmt.Sprintf("Score: %d", g.score), g.scoreStyle)
+}
+
+func (g *Game) Resize(w, h int) {
+	g.screenW = w
+	g.screenH = h
+
+	if !g.shipPlaced && g.shipSprite != nil {
+		pos := g.world.Positions[g.ship]
+		if pos != nil {
+			pos.X = float64((w - g.shipSprite.W) / 2)
+			pos.Y = float64(h - g.shipSprite.H - 1)
+			g.shipPlaced = true
+		}
+	}
+
+	if !g.enemiesPlaced {
+		g.layoutEnemies()
+	}
+}
+
+func (g *Game) ShouldQuit() bool {
+	return g.quit
+}
+
+func (g *Game) ClearStyle() grid.Style {
+	return g.bg
+}
+
+func (g *Game) ActionMap() input.ActionMap {
+	return g.binds
+}
+
+func (g *Game) UpdateActionState(state input.ActionState) {
+	g.actions = state
+}
+
+func (g *Game) applyShipMovement() {
+	vel := g.world.Velocities[g.ship]
+	if vel == nil {
+		return
+	}
+	dx := 0.0
+	if g.held("move_left") || g.pressed("move_left") {
+		dx -= 1
+	}
+	if g.held("move_right") || g.pressed("move_right") {
+		dx += 1
+	}
+	vel.DX = dx * shipSpeed
+	vel.DY = 0
+}
+
+func (g *Game) updateEnemyVelocities() {
+	if g.screenW <= 0 || len(g.enemies) == 0 {
+		return
+	}
+	minX := math.MaxFloat64
+	maxX := -math.MaxFloat64
+	for _, e := range g.enemies {
+		pos := g.world.Positions[e]
+		if pos == nil {
+			continue
+		}
+		left := pos.X
+		right := pos.X + float64(g.enemySprite.W)
+		if left < minX {
+			minX = left
+		}
+		if right > maxX {
+			maxX = right
+		}
+	}
+	if maxX >= float64(g.screenW-1) {
+		g.enemyDir = -1
+	}
+	if minX <= 0 {
+		g.enemyDir = 1
+	}
+
+	for _, e := range g.enemies {
+		vel := g.world.Velocities[e]
+		if vel == nil {
+			continue
+		}
+		vel.DX = g.enemyDir * enemySpeed
+		vel.DY = 0
+	}
+}
+
+func (g *Game) spawnBullet() {
+	shipPos := g.world.Positions[g.ship]
+	if shipPos == nil {
+		return
+	}
+	bullet := g.world.NewEntity()
+	bx := shipPos.X + float64(g.shipSprite.W/2)
+	by := shipPos.Y - 1
+	g.world.AddPosition(bullet, bx, by)
+	g.world.AddVelocity(bullet, 0, -bulletSpeed)
+	g.world.AddSprite(bullet, g.bulletSprite, 2)
+	g.bullets = append(g.bullets, bullet)
+}
+
+func (g *Game) cleanupBullets() {
+	if len(g.bullets) == 0 {
+		return
+	}
+	remaining := g.bullets[:0]
+	for _, b := range g.bullets {
+		pos := g.world.Positions[b]
+		if pos == nil {
+			continue
+		}
+		if pos.Y < -1 {
+			g.removeEntity(b)
+			continue
+		}
+		remaining = append(remaining, b)
+	}
+	g.bullets = remaining
+}
+
+func (g *Game) resolveHits() {
+	if len(g.bullets) == 0 || len(g.enemies) == 0 {
+		return
+	}
+	remainingBullets := g.bullets[:0]
+	remainingEnemies := g.enemies[:0]
+
+	enemyHit := make(map[ecs.Entity]bool, len(g.enemies))
+	for _, b := range g.bullets {
+		bpos := g.world.Positions[b]
+		if bpos == nil {
+			continue
+		}
+		bulletRemoved := false
+		for _, e := range g.enemies {
+			if enemyHit[e] {
+				continue
+			}
+			epos := g.world.Positions[e]
+			if epos == nil {
+				continue
+			}
+			if collision.Overlaps(int(math.Floor(bpos.X)), int(math.Floor(bpos.Y)), g.bulletSprite, int(math.Floor(epos.X)), int(math.Floor(epos.Y)), g.enemySprite) {
+				enemyHit[e] = true
+				bulletRemoved = true
+				break
+			}
+		}
+		if !bulletRemoved {
+			remainingBullets = append(remainingBullets, b)
+		}
+	}
+
+	for _, e := range g.enemies {
+		if enemyHit[e] {
+			g.removeEntity(e)
+			g.score++
+			continue
+		}
+		remainingEnemies = append(remainingEnemies, e)
+	}
+	g.enemies = remainingEnemies
+
+	for _, b := range g.bullets {
+		if g.world.Positions[b] == nil {
+			continue
+		}
+		if containsEntity(remainingBullets, b) {
+			continue
+		}
+		g.removeEntity(b)
+	}
+	g.bullets = remainingBullets
+}
+
+func containsEntity(list []ecs.Entity, target ecs.Entity) bool {
+	for _, e := range list {
+		if e == target {
+			return true
+		}
+	}
+	return false
+}
+
+func (g *Game) clampShip() {
+	if g.screenW <= 0 {
+		return
+	}
+	pos := g.world.Positions[g.ship]
+	if pos == nil {
+		return
+	}
+	maxX := float64(g.screenW - g.shipSprite.W)
+	if pos.X < 0 {
+		pos.X = 0
+	}
+	if pos.X > maxX {
+		pos.X = maxX
+	}
+}
+
+func (g *Game) layoutEnemies() {
+	if g.screenW == 0 || g.enemySprite == nil {
+		return
+	}
+	cols := 8
+	maxCols := (g.screenW + enemyGapX) / (g.enemySprite.W + enemyGapX)
+	if maxCols < 1 {
+		maxCols = 1
+	}
+	if cols > maxCols {
+		cols = maxCols
+	}
+	totalW := cols*g.enemySprite.W + (cols-1)*enemyGapX
+	startX := (g.screenW - totalW) / 2
+	startY := enemyStartY
+
+	for row := 0; row < enemyRows; row++ {
+		y := startY + row*enemyGapY
+		for col := 0; col < cols; col++ {
+			x := startX + col*(g.enemySprite.W+enemyGapX)
+			enemy := g.world.NewEntity()
+			g.world.AddPosition(enemy, float64(x), float64(y))
+			g.world.AddVelocity(enemy, 0, 0)
+			g.world.AddSprite(enemy, g.enemySprite, 1)
+			g.enemies = append(g.enemies, enemy)
+		}
+	}
+	g.enemiesPlaced = true
+}
+
+func (g *Game) removeEntity(e ecs.Entity) {
+	delete(g.world.Positions, e)
+	delete(g.world.Velocities, e)
+	delete(g.world.Sprites, e)
+	delete(g.world.TileMaps, e)
+}
+
+func (g *Game) pressed(action input.Action) bool {
+	return g.actions.Pressed[action]
+}
+
+func (g *Game) held(action input.Action) bool {
+	return g.actions.Held[action]
+}
+
+func main() {
+	game := NewGame()
+	eng, err := engine.New(game, 0)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := eng.Run(game); err != nil {
+		log.Fatal(err)
+	}
+}
