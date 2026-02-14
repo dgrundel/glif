@@ -59,6 +59,7 @@ func (r *Renderer) DrawSprite(x, y int, sprite *Sprite) {
 		for col := 0; col < sprite.W; col++ {
 			cell := sprite.cellAt(col, row)
 			if cell.Skip {
+				cell.Ch = ' '
 				cell.Style = cell.Style.Resolve(r.Frame.At(x+col, y+row).Style)
 				r.Frame.Set(x+col, y+row, cell)
 				continue

@@ -73,6 +73,13 @@ func (s *Screen) Present(back *grid.Frame) {
 	for i := range back.Cells {
 		b := back.Cells[i]
 		if b.Skip {
+			x := i % back.W
+			y := i / back.W
+			ch := b.Ch
+			if ch == 0 {
+				ch = ' '
+			}
+			s.screen.SetContent(x, y, ch, nil, b.Style.ToTCell())
 			s.front.Cells[i] = b
 			continue
 		}
