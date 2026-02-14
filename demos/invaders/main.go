@@ -343,9 +343,10 @@ func (g *Game) layoutEnemies() {
 	totalW := cols*g.enemySprite.W + (cols-1)*enemyGapX
 	startX := (g.screenW - totalW) / 2
 	startY := enemyStartY
+	rowGap := g.enemySprite.H + enemyGapY
 
 	for row := 0; row < enemyRows; row++ {
-		y := startY + row*enemyGapY
+		y := startY + row*rowGap
 		for col := 0; col < cols; col++ {
 			x := startX + col*(g.enemySprite.W+enemyGapX)
 			enemy := g.world.NewEntity()
