@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -22,6 +23,7 @@ type PreviewItem struct {
 	Name       string
 	LabelWidth int
 	Sprite     *render.Sprite
+	Player     *render.AnimationPlayer
 }
 
 type SpritePreview struct {
@@ -70,6 +72,11 @@ func NewSpritePreview(items []PreviewItem, reload func() ([]PreviewItem, error))
 }
 
 func (p *SpritePreview) Update(dt float64) {
+	for i := range p.items {
+		if p.items[i].Player != nil {
+			p.items[i].Player.Update(dt)
+		}
+	}
 	if p.pressed("quit") || p.pressed("quit_alt") {
 		p.quit = true
 		return
@@ -146,8 +153,14 @@ func (p *SpritePreview) Draw(r *render.Renderer) {
 			continue
 		}
 		r.Rect(drawX, drawY, li.w, li.h, p.border)
-		r.DrawSprite(drawX+1, drawY+1, li.item.Sprite)
-		r.DrawText(drawX+1, drawY+1+li.item.Sprite.H, li.item.Name, p.text)
+		sprite := li.item.Sprite
+		if li.item.Player != nil {
+			if frame := li.item.Player.Sprite(); frame != nil {
+				sprite = frame
+			}
+		}
+		r.DrawSprite(drawX+1, drawY+1, sprite)
+		r.DrawText(drawX+1, drawY+1+sprite.H, li.item.Name, p.text)
 	}
 }
 
@@ -242,7 +255,7 @@ func truncateToWidth(s string, width int) string {
 	return s
 }
 
-func loadItem(base, label string) (PreviewItem, error) {
+func loadItem(base, label, animName string, animFPS float64) (PreviewItem, error) {
 	basePath := base
 	if strings.HasSuffix(basePath, ".sprite") {
 		basePath = strings.TrimSuffix(basePath, ".sprite")
@@ -251,15 +264,27 @@ func loadItem(base, label string) (PreviewItem, error) {
 	if err != nil {
 		return PreviewItem{}, fmt.Errorf("load sprite %s: %w", base, err)
 	}
+	var player *render.AnimationPlayer
+	if animName != "" {
+		anim, err := sprite.LoadAnimation(animName)
+		if err != nil {
+			if !os.IsNotExist(err) && !errors.Is(err, os.ErrNotExist) {
+				return PreviewItem{}, fmt.Errorf("load animation %s (%s): %w", base, animName, err)
+			}
+		} else {
+			player = anim.Play(animFPS)
+		}
+	}
 	name := filepath.Base(label)
 	return PreviewItem{
 		Name:       name,
 		LabelWidth: utf8.RuneCountInString(name),
 		Sprite:     sprite,
+		Player:     player,
 	}, nil
 }
 
-func buildItems(args []string, recursive bool) ([]PreviewItem, error) {
+func buildItems(args []string, recursive bool, animName string, animFPS float64) ([]PreviewItem, error) {
 	items := make([]PreviewItem, 0, len(args))
 	for _, arg := range args {
 		info, err := os.Stat(arg)
@@ -285,7 +310,7 @@ func buildItems(args []string, recursive bool) ([]PreviewItem, error) {
 				for _, path := range paths {
 					base := strings.TrimSuffix(path, ".sprite")
 					label := path
-					item, err := loadItem(base, label)
+					item, err := loadItem(base, label, animName, animFPS)
 					if err != nil {
 						return nil, err
 					}
@@ -309,7 +334,7 @@ func buildItems(args []string, recursive bool) ([]PreviewItem, error) {
 				sort.Strings(names)
 				for _, name := range names {
 					base := filepath.Join(arg, strings.TrimSuffix(name, ".sprite"))
-					item, err := loadItem(base, name)
+					item, err := loadItem(base, name, animName, animFPS)
 					if err != nil {
 						return nil, err
 					}
@@ -318,7 +343,7 @@ func buildItems(args []string, recursive bool) ([]PreviewItem, error) {
 			}
 			continue
 		}
-		item, err := loadItem(arg, filepath.Base(arg))
+		item, err := loadItem(arg, filepath.Base(arg), animName, animFPS)
 		if err != nil {
 			return nil, err
 		}
@@ -329,6 +354,8 @@ func buildItems(args []string, recursive bool) ([]PreviewItem, error) {
 
 func main() {
 	recursive := flag.Bool("r", false, "recursively scan folders for .sprite files")
+	animateName := flag.String("animate", "", "animate sprites that have the named animation")
+	animFPS := flag.Float64("fps", 8, "animation fps for --animate")
 	flag.Parse()
 
 	args := flag.Args()
@@ -337,7 +364,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	items, err := buildItems(args, *recursive)
+	items, err := buildItems(args, *recursive, *animateName, *animFPS)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -347,7 +374,7 @@ func main() {
 	}
 
 	game := NewSpritePreview(items, func() ([]PreviewItem, error) {
-		return buildItems(args, *recursive)
+		return buildItems(args, *recursive, *animateName, *animFPS)
 	})
 	eng, err := engine.New(game, 0)
 	if err != nil {
