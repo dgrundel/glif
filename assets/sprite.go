@@ -78,7 +78,7 @@ func LoadSprite(basePath string) (*render.Sprite, error) {
 				if i == 0 {
 					cells[idx] = grid.Cell{Ch: spr, Style: entry.Style}
 				} else {
-					cells[idx] = grid.Cell{Ch: 0, Style: entry.Style, Skip: true}
+					cells[idx] = grid.SkipCell(entry.Style)
 				}
 			}
 		}

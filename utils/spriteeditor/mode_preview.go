@@ -79,7 +79,7 @@ func (e *Editor) previewSprite() *render.Sprite {
 				if i == 0 {
 					cells[idx] = grid.Cell{Ch: spr, Style: style}
 				} else {
-					cells[idx] = grid.Cell{Ch: 0, Style: style, Skip: true}
+					cells[idx] = grid.SkipCell(style)
 				}
 			}
 		}

@@ -60,6 +60,10 @@ type Cell struct {
 	Skip  bool
 }
 
+func SkipCell(s Style) Cell {
+	return Cell{Ch: ' ', Style: s, Skip: true}
+}
+
 type Frame struct {
 	W     int
 	H     int
