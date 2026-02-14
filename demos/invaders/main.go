@@ -34,10 +34,13 @@ type Game struct {
 
 	shipSprite   *render.Sprite
 	enemySprite  *render.Sprite
+	enemy2Sprite *render.Sprite
 	bulletSprite *render.Sprite
 
-	screenW int
-	screenH int
+	screenW   int
+	screenH   int
+	enemyMaxW int
+	enemyMaxH int
 
 	enemyDir      float64
 	fireTimer     float64
@@ -69,7 +72,16 @@ func NewGame() *Game {
 	world := ecs.NewWorld()
 	shipSprite := assets.MustLoadSprite("demos/invaders/assets/ship")
 	enemySprite := assets.MustLoadSprite("demos/invaders/assets/enemy")
+	enemy2Sprite := assets.MustLoadSprite("demos/invaders/assets/enemy2")
 	bulletSprite := assets.MustLoadSprite("demos/invaders/assets/bullet")
+	enemyMaxW := enemySprite.W
+	enemyMaxH := enemySprite.H
+	if enemy2Sprite.W > enemyMaxW {
+		enemyMaxW = enemy2Sprite.W
+	}
+	if enemy2Sprite.H > enemyMaxH {
+		enemyMaxH = enemy2Sprite.H
+	}
 
 	ship := world.NewEntity()
 	world.AddPosition(ship, 0, 0)
@@ -81,7 +93,10 @@ func NewGame() *Game {
 		ship:         ship,
 		shipSprite:   shipSprite,
 		enemySprite:  enemySprite,
+		enemy2Sprite: enemy2Sprite,
 		bulletSprite: bulletSprite,
+		enemyMaxW:    enemyMaxW,
+		enemyMaxH:    enemyMaxH,
 		enemyDir:     1,
 		binds: input.ActionMap{
 			"move_left":  "key:left",
@@ -185,11 +200,12 @@ func (g *Game) updateEnemyVelocities() {
 	maxX := -math.MaxFloat64
 	for _, e := range g.enemies {
 		pos := g.world.Positions[e]
-		if pos == nil {
+		ref := g.world.Sprites[e]
+		if pos == nil || ref == nil || ref.Sprite == nil {
 			continue
 		}
 		left := pos.X
-		right := pos.X + float64(g.enemySprite.W)
+		right := pos.X + float64(ref.Sprite.W)
 		if left < minX {
 			minX = left
 		}
@@ -266,10 +282,11 @@ func (g *Game) resolveHits() {
 				continue
 			}
 			epos := g.world.Positions[e]
-			if epos == nil {
+			eref := g.world.Sprites[e]
+			if epos == nil || eref == nil || eref.Sprite == nil {
 				continue
 			}
-			if collision.Overlaps(int(math.Floor(bpos.X)), int(math.Floor(bpos.Y)), g.bulletSprite, int(math.Floor(epos.X)), int(math.Floor(epos.Y)), g.enemySprite) {
+			if collision.Overlaps(int(math.Floor(bpos.X)), int(math.Floor(bpos.Y)), g.bulletSprite, int(math.Floor(epos.X)), int(math.Floor(epos.Y)), eref.Sprite) {
 				enemyHit[e] = true
 				bulletRemoved = true
 				break
@@ -333,26 +350,30 @@ func (g *Game) layoutEnemies() {
 		return
 	}
 	cols := 8
-	maxCols := (g.screenW + enemyGapX) / (g.enemySprite.W + enemyGapX)
+	maxCols := (g.screenW + enemyGapX) / (g.enemyMaxW + enemyGapX)
 	if maxCols < 1 {
 		maxCols = 1
 	}
 	if cols > maxCols {
 		cols = maxCols
 	}
-	totalW := cols*g.enemySprite.W + (cols-1)*enemyGapX
+	totalW := cols*g.enemyMaxW + (cols-1)*enemyGapX
 	startX := (g.screenW - totalW) / 2
 	startY := enemyStartY
-	rowGap := g.enemySprite.H + enemyGapY
+	rowGap := g.enemyMaxH + enemyGapY
 
 	for row := 0; row < enemyRows; row++ {
 		y := startY + row*rowGap
 		for col := 0; col < cols; col++ {
-			x := startX + col*(g.enemySprite.W+enemyGapX)
+			x := startX + col*(g.enemyMaxW+enemyGapX)
 			enemy := g.world.NewEntity()
+			sprite := g.enemySprite
+			if (row+col)%3 == 0 {
+				sprite = g.enemy2Sprite
+			}
 			g.world.AddPosition(enemy, float64(x), float64(y))
 			g.world.AddVelocity(enemy, 0, 0)
-			g.world.AddSprite(enemy, g.enemySprite, 1)
+			g.world.AddSprite(enemy, sprite, 1)
 			g.enemies = append(g.enemies, enemy)
 		}
 	}
