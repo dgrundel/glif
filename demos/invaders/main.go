@@ -21,6 +21,7 @@ const (
 	bulletSpeed  = 45.0
 	fireCooldown = 0.35
 	explodeFPS   = 12.0
+	flyInSpeed   = 28.0
 	enemyRows    = 2
 	enemyGapX    = 2
 	enemyGapY    = 2
@@ -57,8 +58,9 @@ type Game struct {
 	levelStyle grid.Style
 	quit       bool
 
-	explosions []explosion
-	enemyAnims map[ecs.Entity]*render.Animation
+	explosions   []explosion
+	enemyAnims   map[ecs.Entity]*render.Animation
+	enemyTargets map[ecs.Entity]float64
 }
 
 type explosion struct {
@@ -128,9 +130,10 @@ func NewGame() *Game {
 			"quit":       "key:esc",
 			"quit_alt":   "key:ctrl+c",
 		},
-		bg:         bg,
-		levelStyle: levelStyle,
-		enemyAnims: make(map[ecs.Entity]*render.Animation),
+		bg:           bg,
+		levelStyle:   levelStyle,
+		enemyAnims:   make(map[ecs.Entity]*render.Animation),
+		enemyTargets: make(map[ecs.Entity]float64),
 	}
 }
 
@@ -222,6 +225,9 @@ func (g *Game) updateEnemyVelocities() {
 	if g.screenW <= 0 || len(g.enemies) == 0 {
 		return
 	}
+	if g.updateEnemyFlyIn() {
+		return
+	}
 	minX := math.MaxFloat64
 	maxX := -math.MaxFloat64
 	for _, e := range g.enemies {
@@ -254,6 +260,51 @@ func (g *Game) updateEnemyVelocities() {
 		vel.DX = g.enemyDir * enemySpeed
 		vel.DY = 0
 	}
+}
+
+func (g *Game) updateEnemyFlyIn() bool {
+	if len(g.enemyTargets) == 0 {
+		return false
+	}
+	flying := false
+	for _, e := range g.enemies {
+		targetX, ok := g.enemyTargets[e]
+		if !ok {
+			continue
+		}
+		pos := g.world.Positions[e]
+		vel := g.world.Velocities[e]
+		if pos == nil || vel == nil {
+			continue
+		}
+		delta := targetX - pos.X
+		if math.Abs(delta) <= 0.5 {
+			pos.X = targetX
+			vel.DX = 0
+			delete(g.enemyTargets, e)
+			continue
+		}
+		flying = true
+		if delta < 0 {
+			vel.DX = -flyInSpeed
+		} else {
+			vel.DX = flyInSpeed
+		}
+		vel.DY = 0
+	}
+	if flying {
+		for _, e := range g.enemies {
+			if _, ok := g.enemyTargets[e]; ok {
+				continue
+			}
+			vel := g.world.Velocities[e]
+			if vel != nil {
+				vel.DX = 0
+				vel.DY = 0
+			}
+		}
+	}
+	return flying
 }
 
 func (g *Game) spawnBullet() {
@@ -443,6 +494,10 @@ func (g *Game) layoutEnemies() {
 	if g.screenW == 0 || g.enemySprite == nil {
 		return
 	}
+	g.enemyDir = 1
+	for e := range g.enemyTargets {
+		delete(g.enemyTargets, e)
+	}
 	cols := 8
 	maxCols := (g.screenW + enemyGapX) / (g.enemyMaxW + enemyGapX)
 	if maxCols < 1 {
@@ -460,6 +515,7 @@ func (g *Game) layoutEnemies() {
 		y := startY + row*rowGap
 		for col := 0; col < cols; col++ {
 			x := startX + col*(g.enemyMaxW+enemyGapX)
+			targetX := float64(x)
 			enemy := g.world.NewEntity()
 			sprite := g.enemySprite
 			anim := g.enemyDestroy
@@ -467,11 +523,17 @@ func (g *Game) layoutEnemies() {
 				sprite = g.enemy2Sprite
 				anim = g.enemy2Destroy
 			}
-			g.world.AddPosition(enemy, float64(x), float64(y))
+			flyOffset := float64(g.screenW + g.enemyMaxW)
+			startX := targetX - flyOffset
+			if row%2 == 1 {
+				startX = targetX + flyOffset
+			}
+			g.world.AddPosition(enemy, startX, float64(y))
 			g.world.AddVelocity(enemy, 0, 0)
 			g.world.AddSprite(enemy, sprite, 1)
 			g.enemies = append(g.enemies, enemy)
 			g.enemyAnims[enemy] = anim
+			g.enemyTargets[enemy] = targetX
 		}
 	}
 	g.enemiesPlaced = true
