@@ -49,37 +49,27 @@ func loadSpriteSourceFromFile(spriteFile File, basePath string) (*SpriteSource, 
 		Sprite:   spriteFile.RuneRows(),
 	}
 
-	colorFile, err := LoadFile(basePath + ".color")
-	if err != nil {
-		errs = append(errs, err)
-	} else {
+	colorFile := loadRequiredFile(basePath+".color", &errs)
+	if colorFile != nil {
 		src.Color = colorFile.RuneRows()
 		if err := validateMaskRows("color", src.Sprite, src.Color); err != nil {
 			errs = append(errs, err)
 		}
 	}
 
-	if fileExists(basePath + ".width") {
-		widthFile, err := LoadFile(basePath + ".width")
-		if err != nil {
+	widthFile := loadOptionalFile(basePath+".width", &errs)
+	if widthFile != nil {
+		src.Width = widthFile.RuneRows()
+		if _, err := ComputeWidthProfile(src.Sprite, src.Width); err != nil {
 			errs = append(errs, err)
-		} else {
-			src.Width = widthFile.RuneRows()
-			if _, err := ComputeWidthProfile(src.Sprite, src.Width); err != nil {
-				errs = append(errs, err)
-			}
 		}
 	}
 
-	if fileExists(basePath + ".collision") {
-		collisionFile, err := LoadFile(basePath + ".collision")
-		if err != nil {
+	collisionFile := loadOptionalFile(basePath+".collision", &errs)
+	if collisionFile != nil {
+		src.Collision = collisionFile.RuneRows()
+		if err := validateMaskRows("collision", src.Sprite, src.Collision); err != nil {
 			errs = append(errs, err)
-		} else {
-			src.Collision = collisionFile.RuneRows()
-			if err := validateMaskRows("collision", src.Sprite, src.Collision); err != nil {
-				errs = append(errs, err)
-			}
 		}
 	}
 
@@ -109,27 +99,9 @@ func LoadAnimationSource(basePath, name string) (*AnimationSource, error) {
 		return nil, errors.Join(append(errs, err)...)
 	}
 
-	var animColor File
-	if fileExists(basePath + "." + name + ".animation.color") {
-		animColor, err = LoadFile(basePath + "." + name + ".animation.color")
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-	var animWidth File
-	if fileExists(basePath + "." + name + ".animation.width") {
-		animWidth, err = LoadFile(basePath + "." + name + ".animation.width")
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-	var animCollision File
-	if fileExists(basePath + "." + name + ".animation.collision") {
-		animCollision, err = LoadFile(basePath + "." + name + ".animation.collision")
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
+	animColor := loadOptionalFile(basePath+"."+name+".animation.color", &errs)
+	animWidth := loadOptionalFile(basePath+"."+name+".animation.width", &errs)
+	animCollision := loadOptionalFile(basePath+"."+name+".animation.collision", &errs)
 
 	frames := make([]*SpriteSource, 0, frameCount)
 	for i := 0; i < frameCount; i++ {
@@ -139,32 +111,9 @@ func LoadAnimationSource(basePath, name string) (*AnimationSource, error) {
 			break
 		}
 
-		colorRows := baseSrc.Color
-		if animColor != nil {
-			if rows, err := animColor.FrameRows(frameH, i); err != nil {
-				errs = append(errs, err)
-			} else {
-				colorRows = rows
-			}
-		}
-
-		widthRows := baseSrc.Width
-		if animWidth != nil {
-			if rows, err := animWidth.FrameRows(frameH, i); err != nil {
-				errs = append(errs, err)
-			} else {
-				widthRows = rows
-			}
-		}
-
-		collisionRows := baseSrc.Collision
-		if animCollision != nil {
-			if rows, err := animCollision.FrameRows(frameH, i); err != nil {
-				errs = append(errs, err)
-			} else {
-				collisionRows = rows
-			}
-		}
+		colorRows := frameRowsOrBase(animColor, frameH, i, baseSrc.Color, &errs)
+		widthRows := frameRowsOrBase(animWidth, frameH, i, baseSrc.Width, &errs)
+		collisionRows := frameRowsOrBase(animCollision, frameH, i, baseSrc.Collision, &errs)
 
 		frame := &SpriteSource{
 			BasePath:  basePath,
@@ -192,6 +141,39 @@ func LoadAnimationSource(basePath, name string) (*AnimationSource, error) {
 	}
 
 	return &AnimationSource{Name: name, Frames: frames}, errors.Join(errs...)
+}
+
+func loadOptionalFile(path string, errs *[]error) File {
+	if !fileExists(path) {
+		return nil
+	}
+	f, err := LoadFile(path)
+	if err != nil {
+		*errs = append(*errs, err)
+		return nil
+	}
+	return f
+}
+
+func loadRequiredFile(path string, errs *[]error) File {
+	f, err := LoadFile(path)
+	if err != nil {
+		*errs = append(*errs, err)
+		return nil
+	}
+	return f
+}
+
+func frameRowsOrBase(f File, frameH, frameIndex int, base [][]rune, errs *[]error) [][]rune {
+	if f == nil {
+		return base
+	}
+	rows, err := f.FrameRows(frameH, frameIndex)
+	if err != nil {
+		*errs = append(*errs, err)
+		return base
+	}
+	return rows
 }
 
 func validateMaskRows(name string, spriteRows, maskRows [][]rune) error {
