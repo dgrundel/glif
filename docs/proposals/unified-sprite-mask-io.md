@@ -87,14 +87,7 @@ func LoadAnimationSource(basePath, name string) (*AnimationSource, error)
 - `Sprite` and `Color` required.
 - `Width` and `Collision` optional.
 
-### 3) Frame Splitting
-```go
-// SplitFrames splits stacked lines into frames of height frameH.
-func SplitFrames(lines []string, frameH int) ([][][]rune, error)
-```
-Returns `frames[frameIndex][rowIndex][]rune`.
-
-### 4) Frame View
+### 3) Frame View
 ```go
 type FrameView struct {
     // SpriteRows are the per-frame sprite runes (unexpanded, no padding).
@@ -128,14 +121,14 @@ Rules:
 - If `widthRows` exists: width comes from mask rune, missing mask entries default to 1.
 - Expanded width is computed per row; `CellWidth` is max across rows.
 
-### 6) Build Concrete Sprites
+### 5) Build Concrete Sprites
 ```go
 // BuildSprite builds a render.Sprite using color/width rules and skip cells.
 func BuildSprite(f *FrameView, pal *palette.Palette) (*render.Sprite, error)
 ```
 Builds a `render.Sprite` using color/width rules and produces skip cells for wide glyphs.
 
-### 7) Build Animations
+### 6) Build Animations
 ```go
 // BuildAnimation builds a render.Animation from a base sprite + animation source.
 func BuildAnimation(base *render.Sprite, anim *AnimationSource, pal *palette.Palette) (*render.Animation, error)
@@ -181,7 +174,7 @@ got: 23
 ---
 
 ## Migration Plan (Incremental)
-1. Add `SpriteSource`, `AnimationSource`, and `SplitFrames` in a new package (e.g., `spriteio`).
+1. Add `SpriteSource` and `AnimationSource` in a new package (e.g., `spriteio`).
 2. Add `LoadFile` + `File` implementation and migrate all file reads to it.
 3. Update `assets.LoadSprite` to use the new pipeline.
 4. Update animation loading to split frames and pass each through the sprite loading path.

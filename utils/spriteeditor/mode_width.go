@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/dgrundel/glif/spriteio"
 )
 
 func (e *Editor) ensureWidthCells() {
@@ -25,24 +27,20 @@ func (e *Editor) ensureWidthCells() {
 }
 
 func readWidthMask(path string) (map[Point]rune, bool, error) {
-	data, err := os.ReadFile(path)
+	f, err := spriteio.LoadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, false, nil
 		}
 		return nil, false, err
 	}
-	text := string(data)
-	if strings.HasSuffix(text, "\n") {
-		text = strings.TrimRight(text, "\n")
-	}
-	if text == "" {
+	rows := f.RuneRows()
+	if len(rows) == 0 {
 		return map[Point]rune{}, true, nil
 	}
-	lines := strings.Split(text, "\n")
 	out := make(map[Point]rune)
-	for y, line := range lines {
-		for x, ch := range []rune(line) {
+	for y, line := range rows {
+		for x, ch := range line {
 			out[Point{X: x, Y: y}] = ch
 		}
 	}

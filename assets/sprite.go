@@ -6,20 +6,16 @@ import (
 	"github.com/dgrundel/glif/grid"
 	"github.com/dgrundel/glif/palette"
 	"github.com/dgrundel/glif/render"
+	"github.com/dgrundel/glif/spriteio"
 )
 
 func LoadSprite(basePath string) (*render.Sprite, error) {
-	spriteLinesRaw, err := readLines(basePath + ".sprite")
+	src, err := spriteio.LoadSpriteSource(basePath)
 	if err != nil {
 		return nil, err
 	}
-	maskLinesRaw, err := readLines(basePath + ".color")
-	if err != nil {
-		return nil, err
-	}
-
-	spriteLines := toRunesLines(spriteLinesRaw)
-	maskLines := toRunesLines(maskLinesRaw)
+	spriteLines := src.Sprite
+	maskLines := src.Color
 
 	sw, sh := dims(spriteLines)
 	mw, mh := dims(maskLines)
@@ -27,11 +23,7 @@ func LoadSprite(basePath string) (*render.Sprite, error) {
 		return nil, fmt.Errorf("sprite and color sizes differ: sprite=%dx%d color=%dx%d", sw, sh, mw, mh)
 	}
 
-	widthLines, hasWidth, err := readOptionalLines(basePath + ".width")
-	if err != nil {
-		return nil, err
-	}
-	widthMask, cellW, err := parseWidthMask(widthLines, hasWidth, spriteLines, sw, sh)
+	widthMask, cellW, err := spriteio.ParseWidthMask(spriteLines, src.Width)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +33,7 @@ func LoadSprite(basePath string) (*render.Sprite, error) {
 		return nil, err
 	}
 
-	collisionMask, err := loadCollisionMask(basePath, spriteLines, widthMask, cellW, sw, sh)
+	collisionMask, err := buildCollisionMask(spriteLines, src.Collision, widthMask, cellW, sw, sh)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +45,7 @@ func LoadSprite(basePath string) (*render.Sprite, error) {
 			spr := runeAt(spriteLines[y], x)
 			mask := runeAt(maskLines[y], x)
 			width := 1
-			if hasWidth && x < len(widthMask[y]) {
+			if widthMask != nil && x < len(widthMask[y]) {
 				width = widthMask[y][x]
 			}
 

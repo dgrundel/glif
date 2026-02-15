@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"strings"
+
+	"github.com/dgrundel/glif/spriteio"
 )
 
 func (e *Editor) ensureCollisionCells() {
@@ -24,24 +26,20 @@ func (e *Editor) ensureCollisionCells() {
 }
 
 func readCollisionMask(path string, spriteW, spriteH int, fill rune) (map[Point]rune, error) {
-	data, err := os.ReadFile(path)
+	f, err := spriteio.LoadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return generateFilledCells(spriteW, spriteH, fill), nil
 		}
 		return nil, err
 	}
-	text := string(data)
-	if strings.HasSuffix(text, "\n") {
-		text = strings.TrimRight(text, "\n")
-	}
-	if text == "" {
+	rows := f.RuneRows()
+	if len(rows) == 0 {
 		return map[Point]rune{}, nil
 	}
-	lines := strings.Split(text, "\n")
 	out := make(map[Point]rune)
-	for y, line := range lines {
-		for x, ch := range []rune(line) {
+	for y, line := range rows {
+		for x, ch := range line {
 			out[Point{X: x, Y: y}] = ch
 		}
 	}
