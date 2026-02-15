@@ -33,11 +33,12 @@ type Game struct {
 	enemies []ecs.Entity
 	bullets []ecs.Entity
 
-	shipSprite   *render.Sprite
-	enemySprite  *render.Sprite
-	enemy2Sprite *render.Sprite
-	bulletSprite *render.Sprite
-	enemyDestroy *render.Animation
+	shipSprite    *render.Sprite
+	enemySprite   *render.Sprite
+	enemy2Sprite  *render.Sprite
+	bulletSprite  *render.Sprite
+	enemyDestroy  *render.Animation
+	enemy2Destroy *render.Animation
 
 	screenW   int
 	screenH   int
@@ -89,6 +90,10 @@ func NewGame() *Game {
 	if err != nil {
 		log.Printf("load destroy animation: %v", err)
 	}
+	enemy2Destroy, err := enemy2Sprite.LoadAnimation("destroy")
+	if err != nil {
+		log.Printf("load enemy2 destroy animation: %v", err)
+	}
 	enemyMaxW := enemySprite.W
 	enemyMaxH := enemySprite.H
 	if enemy2Sprite.W > enemyMaxW {
@@ -104,16 +109,17 @@ func NewGame() *Game {
 	world.AddSprite(ship, shipSprite, 1)
 
 	return &Game{
-		world:        world,
-		ship:         ship,
-		shipSprite:   shipSprite,
-		enemySprite:  enemySprite,
-		enemy2Sprite: enemy2Sprite,
-		bulletSprite: bulletSprite,
-		enemyDestroy: enemyDestroy,
-		enemyMaxW:    enemyMaxW,
-		enemyMaxH:    enemyMaxH,
-		enemyDir:     1,
+		world:         world,
+		ship:          ship,
+		shipSprite:    shipSprite,
+		enemySprite:   enemySprite,
+		enemy2Sprite:  enemy2Sprite,
+		bulletSprite:  bulletSprite,
+		enemyDestroy:  enemyDestroy,
+		enemy2Destroy: enemy2Destroy,
+		enemyMaxW:     enemyMaxW,
+		enemyMaxH:     enemyMaxH,
+		enemyDir:      1,
 		binds: input.ActionMap{
 			"move_left":  "key:left",
 			"move_right": "key:right",
@@ -449,7 +455,7 @@ func (g *Game) layoutEnemies() {
 			anim := g.enemyDestroy
 			if (row+col)%3 == 0 {
 				sprite = g.enemy2Sprite
-				anim = nil
+				anim = g.enemy2Destroy
 			}
 			g.world.AddPosition(enemy, float64(x), float64(y))
 			g.world.AddVelocity(enemy, 0, 0)
