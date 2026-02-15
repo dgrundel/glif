@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
+	"time"
 
 	"github.com/dgrundel/glif/assets"
 	"github.com/dgrundel/glif/collision"
@@ -22,6 +24,7 @@ const (
 	fireCooldown = 0.35
 	explodeFPS   = 12.0
 	flyInSpeed   = 28.0
+	enemy2Chance = 0.1
 	enemyRows    = 2
 	enemyGapX    = 2
 	enemyGapY    = 2
@@ -61,6 +64,7 @@ type Game struct {
 	explosions   []explosion
 	enemyAnims   map[ecs.Entity]*render.Animation
 	enemyTargets map[ecs.Entity]float64
+	rng          *rand.Rand
 }
 
 type explosion struct {
@@ -134,6 +138,7 @@ func NewGame() *Game {
 		levelStyle:   levelStyle,
 		enemyAnims:   make(map[ecs.Entity]*render.Animation),
 		enemyTargets: make(map[ecs.Entity]float64),
+		rng:          rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 }
 
@@ -519,7 +524,7 @@ func (g *Game) layoutEnemies() {
 			enemy := g.world.NewEntity()
 			sprite := g.enemySprite
 			anim := g.enemyDestroy
-			if (row+col)%3 == 0 {
+			if g.rng != nil && g.rng.Float64() < enemy2Chance {
 				sprite = g.enemy2Sprite
 				anim = g.enemy2Destroy
 			}
