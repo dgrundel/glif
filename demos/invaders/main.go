@@ -66,6 +66,7 @@ type Game struct {
 	explosions   []explosion
 	enemyAnims   map[ecs.Entity]*render.Animation
 	enemyTargets map[ecs.Entity]float64
+	enemyHP      map[ecs.Entity]int
 	rng          *rand.Rand
 }
 
@@ -140,6 +141,7 @@ func NewGame() *Game {
 		levelStyle:   levelStyle,
 		enemyAnims:   make(map[ecs.Entity]*render.Animation),
 		enemyTargets: make(map[ecs.Entity]float64),
+		enemyHP:      make(map[ecs.Entity]int),
 		rng:          rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 }
@@ -383,6 +385,12 @@ func (g *Game) resolveHits() {
 
 	for _, e := range g.enemies {
 		if enemyHit[e] {
+			hp := g.enemyHP[e] - 1
+			if hp > 0 {
+				g.enemyHP[e] = hp
+				remainingEnemies = append(remainingEnemies, e)
+				continue
+			}
 			g.onEnemyHit(e)
 			continue
 		}
@@ -506,6 +514,9 @@ func (g *Game) layoutEnemies() {
 	for e := range g.enemyTargets {
 		delete(g.enemyTargets, e)
 	}
+	for e := range g.enemyHP {
+		delete(g.enemyHP, e)
+	}
 	cols := 8
 	maxCols := (g.screenW + enemyGapX) / (g.enemyMaxW + enemyGapX)
 	if maxCols < 1 {
@@ -527,9 +538,11 @@ func (g *Game) layoutEnemies() {
 			enemy := g.world.NewEntity()
 			sprite := g.enemySprite
 			anim := g.enemyDestroy
+			hp := 1
 			if g.rng != nil && g.rng.Float64() < enemy2Chance {
 				sprite = g.enemy2Sprite
 				anim = g.enemy2Destroy
+				hp = 3
 			}
 			flyOffset := float64(g.screenW + g.enemyMaxW)
 			startX := targetX - flyOffset
@@ -542,6 +555,7 @@ func (g *Game) layoutEnemies() {
 			g.enemies = append(g.enemies, enemy)
 			g.enemyAnims[enemy] = anim
 			g.enemyTargets[enemy] = targetX
+			g.enemyHP[enemy] = hp
 		}
 	}
 	g.enemiesPlaced = true
@@ -564,6 +578,7 @@ func (g *Game) removeEntity(e ecs.Entity) {
 	delete(g.world.Sprites, e)
 	delete(g.world.TileMaps, e)
 	delete(g.enemyAnims, e)
+	delete(g.enemyHP, e)
 }
 
 func (g *Game) pressed(action input.Action) bool {
