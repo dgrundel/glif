@@ -3,21 +3,29 @@
 
 ## Demos
 
-### Ski Demo
+### Ski
 
 ```
 go run ./demos/ski
 ```
 
-![Screenshot of gameplay](demos/ski/screenshot.png)
+![Screenshot of gameplay](demos/ski/screenshot.gif)
 
-### Blackjack Demo
+### Blackjack
 
 ```
 go run ./demos/blackjack
 ```
 
-![Screenshot of gameplay](demos/blackjack/gameplay-screenshot.png)
+![Screenshot of gameplay](demos/blackjack/screenshot.gif)
+
+### Invaders
+
+```
+go run ./demos/invaders
+```
+
+![Screenshot of gameplay](demos/invaders/screenshot.gif)
 
 ## Quickstart
 
