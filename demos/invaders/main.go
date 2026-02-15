@@ -20,6 +20,7 @@ const (
 	enemySpeed   = 6.0
 	bulletSpeed  = 45.0
 	fireCooldown = 0.35
+	explodeFPS   = 12.0
 	enemyRows    = 2
 	enemyGapX    = 2
 	enemyGapY    = 2
@@ -36,6 +37,7 @@ type Game struct {
 	enemySprite  *render.Sprite
 	enemy2Sprite *render.Sprite
 	bulletSprite *render.Sprite
+	enemyDestroy *render.Animation
 
 	screenW   int
 	screenH   int
@@ -53,6 +55,15 @@ type Game struct {
 	bg         grid.Style
 	scoreStyle grid.Style
 	quit       bool
+
+	explosions []explosion
+	enemyAnims map[ecs.Entity]*render.Animation
+}
+
+type explosion struct {
+	entity  ecs.Entity
+	frames  []*render.Sprite
+	elapsed float64
 }
 
 func NewGame() *Game {
@@ -74,6 +85,10 @@ func NewGame() *Game {
 	enemySprite := assets.MustLoadSprite("demos/invaders/assets/enemy")
 	enemy2Sprite := assets.MustLoadSprite("demos/invaders/assets/enemy2")
 	bulletSprite := assets.MustLoadSprite("demos/invaders/assets/bullet")
+	enemyDestroy, err := enemySprite.LoadAnimation("destroy")
+	if err != nil {
+		log.Printf("load destroy animation: %v", err)
+	}
 	enemyMaxW := enemySprite.W
 	enemyMaxH := enemySprite.H
 	if enemy2Sprite.W > enemyMaxW {
@@ -95,6 +110,7 @@ func NewGame() *Game {
 		enemySprite:  enemySprite,
 		enemy2Sprite: enemy2Sprite,
 		bulletSprite: bulletSprite,
+		enemyDestroy: enemyDestroy,
 		enemyMaxW:    enemyMaxW,
 		enemyMaxH:    enemyMaxH,
 		enemyDir:     1,
@@ -107,6 +123,7 @@ func NewGame() *Game {
 		},
 		bg:         bg,
 		scoreStyle: scoreStyle,
+		enemyAnims: make(map[ecs.Entity]*render.Animation),
 	}
 }
 
@@ -134,6 +151,7 @@ func (g *Game) Update(dt float64) {
 	g.world.Update(dt)
 	g.clampShip()
 	g.resolveHits()
+	g.updateExplosions(dt)
 	g.cleanupBullets()
 }
 
@@ -299,8 +317,7 @@ func (g *Game) resolveHits() {
 
 	for _, e := range g.enemies {
 		if enemyHit[e] {
-			g.removeEntity(e)
-			g.score++
+			g.onEnemyHit(e)
 			continue
 		}
 		remainingEnemies = append(remainingEnemies, e)
@@ -317,6 +334,67 @@ func (g *Game) resolveHits() {
 		g.removeEntity(b)
 	}
 	g.bullets = remainingBullets
+}
+
+func (g *Game) onEnemyHit(e ecs.Entity) {
+	g.score++
+	anim := g.enemyAnims[e]
+	if anim == nil || len(anim.Frames) == 0 {
+		g.removeEntity(e)
+		return
+	}
+
+	frames := explosionFrames(anim)
+	if len(frames) == 0 {
+		g.removeEntity(e)
+		return
+	}
+
+	ref := g.world.Sprites[e]
+	if ref == nil {
+		g.world.AddSprite(e, frames[0], 1)
+	} else {
+		ref.Sprite = frames[0]
+	}
+	if vel := g.world.Velocities[e]; vel != nil {
+		vel.DX = 0
+		vel.DY = 0
+	}
+	g.explosions = append(g.explosions, explosion{
+		entity: e,
+		frames: frames,
+	})
+}
+
+func (g *Game) updateExplosions(dt float64) {
+	if len(g.explosions) == 0 {
+		return
+	}
+	remaining := g.explosions[:0]
+	for _, ex := range g.explosions {
+		ex.elapsed += dt
+		frame := int(ex.elapsed * explodeFPS)
+		if frame >= len(ex.frames) {
+			g.removeEntity(ex.entity)
+			continue
+		}
+		ref := g.world.Sprites[ex.entity]
+		if ref != nil {
+			ref.Sprite = ex.frames[frame]
+		}
+		remaining = append(remaining, ex)
+	}
+	g.explosions = remaining
+}
+
+func explosionFrames(anim *render.Animation) []*render.Sprite {
+	if anim == nil {
+		return nil
+	}
+	if len(anim.Frames) <= 1 {
+		return anim.Frames
+	}
+	return anim.Frames[1:]
 }
 
 func containsEntity(list []ecs.Entity, target ecs.Entity) bool {
@@ -368,13 +446,16 @@ func (g *Game) layoutEnemies() {
 			x := startX + col*(g.enemyMaxW+enemyGapX)
 			enemy := g.world.NewEntity()
 			sprite := g.enemySprite
+			anim := g.enemyDestroy
 			if (row+col)%3 == 0 {
 				sprite = g.enemy2Sprite
+				anim = nil
 			}
 			g.world.AddPosition(enemy, float64(x), float64(y))
 			g.world.AddVelocity(enemy, 0, 0)
 			g.world.AddSprite(enemy, sprite, 1)
 			g.enemies = append(g.enemies, enemy)
+			g.enemyAnims[enemy] = anim
 		}
 	}
 	g.enemiesPlaced = true
@@ -385,6 +466,7 @@ func (g *Game) removeEntity(e ecs.Entity) {
 	delete(g.world.Velocities, e)
 	delete(g.world.Sprites, e)
 	delete(g.world.TileMaps, e)
+	delete(g.enemyAnims, e)
 }
 
 func (g *Game) pressed(action input.Action) bool {
