@@ -124,16 +124,16 @@ func LoadAnimationSource(basePath, name string) (*AnimationSource, error) {
 		}
 
 		if err := validateMaskRows("color", frame.Sprite, frame.Color); err != nil {
-			errs = append(errs, err)
+			errs = append(errs, fmt.Errorf("frame %d: %w", i+1, err))
 		}
 		if frame.Width != nil {
 			if _, err := ComputeWidthProfile(frame.Sprite, frame.Width); err != nil {
-				errs = append(errs, err)
+				errs = append(errs, fmt.Errorf("frame %d: %w", i+1, err))
 			}
 		}
 		if frame.Collision != nil {
 			if err := validateMaskRows("collision", frame.Sprite, frame.Collision); err != nil {
-				errs = append(errs, err)
+				errs = append(errs, fmt.Errorf("frame %d: %w", i+1, err))
 			}
 		}
 

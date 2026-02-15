@@ -53,7 +53,7 @@ func (s *Sprite) LoadAnimation(name string) (*Animation, error) {
 			return nil, fmt.Errorf("frame %d: %w", i+1, err)
 		}
 		if frame.W != s.W || frame.H != s.H {
-			return nil, fmt.Errorf("animation frame size differs: expected=%dx%d got=%dx%d", s.W, s.H, frame.W, frame.H)
+			return nil, fmt.Errorf("animation frame %d size differs: sprite=%dx%d frame=%dx%d", i+1, s.W, s.H, frame.W, frame.H)
 		}
 		frames = append(frames, frame)
 	}
