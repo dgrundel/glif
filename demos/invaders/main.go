@@ -49,12 +49,12 @@ type Game struct {
 	fireTimer     float64
 	shipPlaced    bool
 	enemiesPlaced bool
-	score         int
+	level         int
 
 	binds      input.ActionMap
 	actions    input.ActionState
 	bg         grid.Style
-	scoreStyle grid.Style
+	levelStyle grid.Style
 	quit       bool
 
 	explosions []explosion
@@ -76,7 +76,7 @@ func NewGame() *Game {
 	if err != nil {
 		log.Fatal(err)
 	}
-	scoreStyle, err := pal.Style('s')
+	levelStyle, err := pal.Style('s')
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -120,6 +120,7 @@ func NewGame() *Game {
 		enemyMaxW:     enemyMaxW,
 		enemyMaxH:     enemyMaxH,
 		enemyDir:      1,
+		level:         1,
 		binds: input.ActionMap{
 			"move_left":  "key:left",
 			"move_right": "key:right",
@@ -128,7 +129,7 @@ func NewGame() *Game {
 			"quit_alt":   "key:ctrl+c",
 		},
 		bg:         bg,
-		scoreStyle: scoreStyle,
+		levelStyle: levelStyle,
 		enemyAnims: make(map[ecs.Entity]*render.Animation),
 	}
 }
@@ -159,11 +160,12 @@ func (g *Game) Update(dt float64) {
 	g.resolveHits()
 	g.updateExplosions(dt)
 	g.cleanupBullets()
+	g.checkNextLevel()
 }
 
 func (g *Game) Draw(r *render.Renderer) {
 	g.world.Draw(r)
-	r.DrawText(0, 0, fmt.Sprintf("Score: %d", g.score), g.scoreStyle)
+	r.DrawText(0, 0, fmt.Sprintf("Level: %d", g.level), g.levelStyle)
 }
 
 func (g *Game) Resize(w, h int) {
@@ -343,7 +345,6 @@ func (g *Game) resolveHits() {
 }
 
 func (g *Game) onEnemyHit(e ecs.Entity) {
-	g.score++
 	anim := g.enemyAnims[e]
 	if anim == nil || len(anim.Frames) == 0 {
 		g.removeEntity(e)
@@ -401,6 +402,15 @@ func explosionFrames(anim *render.Animation) []*render.Sprite {
 		return anim.Frames
 	}
 	return anim.Frames[1:]
+}
+
+func (g *Game) checkNextLevel() {
+	if len(g.enemies) > 0 || len(g.explosions) > 0 {
+		return
+	}
+	g.level++
+	g.enemiesPlaced = false
+	g.layoutEnemies()
 }
 
 func containsEntity(list []ecs.Entity, target ecs.Entity) bool {
