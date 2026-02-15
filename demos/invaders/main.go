@@ -27,6 +27,7 @@ const (
 	enemy2ChanceBase = 0.1
 	enemy2ChanceStep = 0.02
 	enemy2ChanceMax  = 0.5
+	enemySpeedStep   = 0.6
 	enemyRows        = 2
 	enemyGapX        = 2
 	enemyGapY        = 2
@@ -261,12 +262,13 @@ func (g *Game) updateEnemyVelocities() {
 		g.enemyDir = 1
 	}
 
+	speed := enemySpeed + float64(g.level-1)*enemySpeedStep
 	for _, e := range g.enemies {
 		vel := g.world.Velocities[e]
 		if vel == nil {
 			continue
 		}
-		vel.DX = g.enemyDir * enemySpeed
+		vel.DX = g.enemyDir * speed
 		vel.DY = 0
 	}
 }
