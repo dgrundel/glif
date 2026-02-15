@@ -18,17 +18,19 @@ import (
 )
 
 const (
-	shipSpeed    = 30.0
-	enemySpeed   = 6.0
-	bulletSpeed  = 45.0
-	fireCooldown = 0.35
-	explodeFPS   = 12.0
-	flyInSpeed   = 28.0
-	enemy2Chance = 0.1
-	enemyRows    = 2
-	enemyGapX    = 2
-	enemyGapY    = 2
-	enemyStartY  = 2
+	shipSpeed        = 30.0
+	enemySpeed       = 6.0
+	bulletSpeed      = 45.0
+	fireCooldown     = 0.35
+	explodeFPS       = 12.0
+	flyInSpeed       = 28.0
+	enemy2ChanceBase = 0.1
+	enemy2ChanceStep = 0.02
+	enemy2ChanceMax  = 0.5
+	enemyRows        = 2
+	enemyGapX        = 2
+	enemyGapY        = 2
+	enemyStartY      = 2
 )
 
 type Game struct {
@@ -499,6 +501,7 @@ func (g *Game) layoutEnemies() {
 	if g.screenW == 0 || g.enemySprite == nil {
 		return
 	}
+	enemy2Chance := enemy2SpawnChance(g.level)
 	g.enemyDir = 1
 	for e := range g.enemyTargets {
 		delete(g.enemyTargets, e)
@@ -542,6 +545,17 @@ func (g *Game) layoutEnemies() {
 		}
 	}
 	g.enemiesPlaced = true
+}
+
+func enemy2SpawnChance(level int) float64 {
+	if level < 1 {
+		level = 1
+	}
+	chance := enemy2ChanceBase + float64(level-1)*enemy2ChanceStep
+	if chance > enemy2ChanceMax {
+		return enemy2ChanceMax
+	}
+	return chance
 }
 
 func (g *Game) removeEntity(e ecs.Entity) {
